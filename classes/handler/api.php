@@ -1,5 +1,5 @@
 <?php
-class API extends Handler {
+class Handler_API extends Handler {
 
 	const API_LEVEL  = 15;
 

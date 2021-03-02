@@ -1,5 +1,5 @@
 <?php
-class PluginHandler extends Handler_Protected {
+class Handler_PluginHandler extends Handler_Protected {
 	function csrf_ignore($method) {
 		return true;
 	}

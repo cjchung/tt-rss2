@@ -36,8 +36,8 @@
 
 			print json_encode([
 						"seq" => -1,
-						"status" => API::STATUS_ERR,
-						"content" => [ "error" => API::E_NOT_LOGGED_IN ]
+						"status" => Handler_API::STATUS_ERR,
+						"content" => [ "error" => Handler_API::E_NOT_LOGGED_IN ]
 					]);
 
 			return;
@@ -48,7 +48,7 @@
 
 	$method = strtolower($_REQUEST["op"] ?? "");
 
-	$handler = new API($_REQUEST);
+	$handler = new Handler_API($_REQUEST);
 
 	if ($handler->before($method)) {
 		if ($method && method_exists($handler, $method)) {
