@@ -244,6 +244,38 @@ class Feeds extends Handler_Protected {
 					},
 					$line);
 
+				$this->_mark_timestamp("   pre-enclosures");
+
+				if ($line["num_enclosures"] > 0) {
+					$enclosures = Article::_get_enclosures($id);
+
+					$line["enclosures"] = Article::_format_enclosures($id,
+													$line["always_display_enclosures"],
+													$line["content"],
+													$line["hide_images"],
+													$enclosures);
+
+				} else {
+					$enclosures = [];
+					$line["enclosures"] = [ 'formatted' => '', 'entries' => [] ];
+				}
+
+				$this->_mark_timestamp("   enclosures");
+
+				list ($flavor_image, $flavor_stream, $flavor_kind) = Article::_get_image($enclosures,
+									$line["content"], // unsanitized
+									$line["site_url"],
+									$line);
+
+				$line["flavor_image"] = $flavor_image;
+				$line["flavor_stream"] = $flavor_stream;
+
+				/* optional */
+				if ($flavor_kind)
+					$line["flavor_kind"] = $flavor_kind;
+
+				$this->_mark_timestamp("   flavor image");
+
 				$this->_mark_timestamp("   pre-sanitize");
 
 				$line["content"] = Sanitizer::sanitize($line["content"],
@@ -260,19 +292,6 @@ class Feeds extends Handler_Protected {
 						$line["cdm_excerpt"] .= "<span class='excerpt'>" . $line["content_preview"] . "</span>";
 					}
 				}
-
-				$this->_mark_timestamp("   pre-enclosures");
-
-				if ($line["num_enclosures"] > 0) {
-					$line["enclosures"] = Article::_format_enclosures($id,
-						$line["always_display_enclosures"],
-						$line["content"],
-						$line["hide_images"]);
-				} else {
-					$line["enclosures"] = [ 'formatted' => '', 'entries' => [] ];
-				}
-
-				$this->_mark_timestamp("   enclosures");
 
 				$line["updated_long"] = TimeHelper::make_local_datetime($line["updated"],true);
 				$line["updated"] = TimeHelper::make_local_datetime($line["updated"], false, false, false, true);
@@ -315,6 +334,7 @@ class Feeds extends Handler_Protected {
 				}
 
 				$this->_mark_timestamp("   color");
+
 				$this->_mark_timestamp("   pre-hook_render_cdm");
 
 				PluginHost::getInstance()->chain_hooks_callback(PluginHost::HOOK_RENDER_ARTICLE_CDM,

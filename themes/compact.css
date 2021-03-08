@@ -1161,6 +1161,13 @@ video::-webkit-media-controls-overlay-play-button {
 .cdm i.material-icons {
   color: #777;
 }
+.cdm img.flavor-image {
+  width: 32px;
+  height: 32px;
+  margin: 8px ! important;
+  border-radius: 50%;
+  background-size: cover;
+}
 .cdm .header {
   position: sticky;
   top: 0;

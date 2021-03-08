@@ -292,9 +292,12 @@ class Article extends Handler_Protected {
 	static function _format_enclosures($id,
 										$always_display_enclosures,
 									   $article_content,
-										$hide_images = false) {
+										$hide_images = false,
+										$enclosures = false) {
 
-		$enclosures = self::_get_enclosures($id);
+		if ($enclosures === false)
+			$enclosures = self::_get_enclosures($id);
+
 		$enclosures_formatted = "";
 
 		/*foreach ($enclosures as &$enc) {
