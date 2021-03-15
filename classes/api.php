@@ -749,16 +749,16 @@ class API extends Handler {
 						"tags" => $tags,
 					);
 
-					$enclosures = Article::_get_enclosures($line['id']);
+					if ($line["num_enclosures"] > 0 && $include_attachments) {
+						$enclosures = Article::_get_enclosures($line['id']);
 
-					if ($include_attachments)
 						$headline_row['attachments'] = $enclosures;
+					}
 
 					if ($show_excerpt)
 						$headline_row["excerpt"] = $line["content_preview"];
 
 					if ($show_content) {
-
 						if ($sanitize_content) {
 							$headline_row["content"] = Sanitizer::sanitize(
 								$line["content"],
@@ -790,7 +790,7 @@ class API extends Handler {
 					if ($show_content) {
 						$hook_object = ["headline" => &$headline_row];
 
-						list ($flavor_image, $flavor_stream, $flavor_kind) = Article::_get_image($enclosures,
+						list ($flavor_image, $flavor_stream, $flavor_kind) = Article::_get_image($line["id"], $enclosures ?? [],
 																												$line["content"], // unsanitized
 																												$line["site_url"] ?? "", // could be null if archived article
 																												$headline_row);

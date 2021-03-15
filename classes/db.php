@@ -14,6 +14,11 @@ class Db
 		ORM::configure('username', Config::get(Config::DB_USER));
 		ORM::configure('password', Config::get(Config::DB_PASS));
 		ORM::configure('return_result_sets', true);
+
+		ORM::configure('id_column_overrides', array(
+			'ttrss_user_entries'  => 'int_id'
+	  	));
+
 		if (Config::get(Config::DB_TYPE) == "mysql" && Config::get(Config::MYSQL_CHARSET)) {
 			ORM::configure('driver_options', array(PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . Config::get(Config::MYSQL_CHARSET)));
 		}

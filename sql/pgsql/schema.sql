@@ -185,6 +185,9 @@ create table ttrss_user_entries (
 	last_marked timestamp,
 	last_published timestamp,
 	note text,
+	flavor_image text default null,
+	flavor_stream text default null,
+	flavor_kind int default null,
 	unread boolean not null default true);
 
 -- create index ttrss_user_entries_feed_id_index on ttrss_user_entries(feed_id);

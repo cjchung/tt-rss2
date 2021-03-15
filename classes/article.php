@@ -1,5 +1,7 @@
 <?php
 class Article extends Handler_Protected {
+	const ARTICLE_KIND_UNKNOWN = -1;
+	const ARTICLE_KIND_IMAGE = 0; // default
 	const ARTICLE_KIND_ALBUM = 1;
 	const ARTICLE_KIND_VIDEO = 2;
 	const ARTICLE_KIND_YOUTUBE = 3;
@@ -543,22 +545,42 @@ class Article extends Handler_Protected {
 		return $rv;
 	}
 
-	static function _get_image(array $enclosures, string $content, string $site_url, array $headline) {
+	// TODO: when invoked without article_id (i.e. by rssutils) we can implement additional checks
+	// i.e. check for returned content-type and/or http status for checked images
+	static function _get_image(int $article_id, array $enclosures, string $content, string $site_url, array $headline) {
 
 		$article_image = "";
 		$article_stream = "";
-		$article_kind = 0;
+		$article_kind = Article::ARTICLE_KIND_UNKNOWN;
 
-		PluginHost::getInstance()->chain_hooks_callback(PluginHost::HOOK_ARTICLE_IMAGE,
-			function ($result, $plugin) use (&$article_image, &$article_stream, &$content) {
-				list ($article_image, $article_stream, $content) = $result;
+		if ($article_id) {
+			PluginHost::getInstance()->chain_hooks_callback(PluginHost::HOOK_ARTICLE_IMAGE,
+				function ($result, $plugin) use (&$article_image, &$article_stream, &$content) {
+					list ($article_image, $article_stream, $content) = $result;
 
-				// run until first hard match
-				return !empty($article_image);
-			},
-			$enclosures, $content, $site_url, $headline);
+					// run until first hard match
+					return !empty($article_image);
+				},
+				$enclosures, $content, $site_url, $headline);
+		}
 
 		if (!$article_image && !$article_stream) {
+
+			if ($article_id) {
+				$user_entry = ORM::for_table('ttrss_user_entries')
+					->where('ref_id', $article_id)
+					->find_one();
+
+				if (!$user_entry)
+					return [Article::ARTICLE_KIND_UNKNOWN, "", ""];
+
+				if ($user_entry->flavor_kind !== null) {
+					return [$user_entry->flavor_image, $user_entry->flavor_stream, $user_entry->flavor_kind];
+				}
+			} else {
+				$user_entry = null;
+			}
+
 			$tmpdoc = new DOMDocument();
 
 			if (@$tmpdoc->loadHTML('<?xml encoding="UTF-8">' . mb_substr($content, 0, 131070))) {
@@ -594,23 +616,35 @@ class Article extends Handler_Protected {
 				}
 			}
 
-			if (!$article_image)
+			if (!$article_image) {
 				foreach ($enclosures as $enc) {
 					if (strpos($enc["content_type"], "image/") !== false) {
 						$article_image = $enc["content_url"];
 						break;
 					}
 				}
+			}
 
 			if ($article_image) {
 				$article_image = rewrite_relative_url($site_url, $article_image);
 
-				if (!$article_kind && (count($enclosures) > 1 || (isset($elems) && $elems->length > 1)))
+				if ($article_kind == Article::ARTICLE_KIND_UNKNOWN && (count($enclosures) > 1 || (isset($elems) && $elems->length > 1)))
 					$article_kind = Article::ARTICLE_KIND_ALBUM;
 			}
 
 			if ($article_stream)
 				$article_stream = rewrite_relative_url($site_url, $article_stream);
+
+			if ($article_image && $article_kind == Article::ARTICLE_KIND_UNKNOWN)
+				$article_kind = Article::ARTICLE_KIND_IMAGE;
+
+			// use original URLs here, only save if invoked for article_id
+			if ($user_entry) {
+				$user_entry->flavor_image = $article_image ?? "";
+				$user_entry->flavor_stream = $article_stream ?? "";
+				$user_entry->flavor_kind = $article_kind;
+				$user_entry->save();
+			}
 		}
 
 		$cache = new DiskCache("images");

@@ -228,6 +228,17 @@ class Feeds extends Handler_Protected {
 
 				$this->_mark_timestamp("   labels");
 
+				if ($line["tag_cache"])
+					$tags = explode(",", $line["tag_cache"]);
+				else
+					$tags = [];
+
+				$line["tags"] = $tags;
+
+				//$line["tags"] = Article::_get_tags($line["id"], false, $line["tag_cache"]);
+
+				$this->_mark_timestamp("   tags");
+
 				$line["feed_title"] = $line["feed_title"] ?? "";
 
 				$line["buttons_left"] = "";
@@ -281,17 +292,6 @@ class Feeds extends Handler_Protected {
 					TimeHelper::make_local_datetime($line["date_entered"], false));
 
 				$this->_mark_timestamp("   local-datetime");
-
-				if ($line["tag_cache"])
-					$tags = explode(",", $line["tag_cache"]);
-				else
-					$tags = [];
-
-				$line["tags"] = $tags;
-
-				//$line["tags"] = Article::_get_tags($line["id"], false, $line["tag_cache"]);
-
-				$this->_mark_timestamp("   tags");
 
 				$line['has_icon'] = self::_has_icon($feed_id);
 

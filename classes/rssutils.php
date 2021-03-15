@@ -1101,10 +1101,27 @@ class RSSUtils {
 
 					$sth->execute($params);
 
+					list ($entry_flavor_image, $entry_flavor_stream, $entry_flavor_kind) = Article::_get_image(0, $enclosures,
+																														$entry_content, $feed_obj->site_url, $article);
+
+					Debug::log("article flavor image: $entry_flavor_image stream: $entry_flavor_stream kind: $entry_flavor_kind");
+
 					// update aux data
-					$sth = $pdo->prepare("UPDATE ttrss_user_entries
-							SET score = ? WHERE ref_id = ?");
-					$sth->execute([$score, $ref_id]);
+					$sth = $pdo->prepare("UPDATE
+								ttrss_user_entries
+							SET
+								score = :score,
+								flavor_image = :flavor_image,
+								flavor_stream = :flavor_stream,
+								flavor_kind = :flavor_kind
+							WHERE ref_id = :ref_id");
+
+					$sth->execute([
+						":score" => $score,
+						":flavor_image" => $entry_flavor_image,
+						":flavor_stream" => $entry_flavor_stream,
+						":flavor_kind" => $entry_flavor_kind,
+						":ref_id" => $ref_id]);
 
 					if ($feed_obj->mark_unread_on_update &&
 						!$entry_force_catchup &&
