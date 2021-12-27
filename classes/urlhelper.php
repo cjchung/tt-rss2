@@ -296,6 +296,7 @@ class UrlHelper {
 		}
 
 		$url_host = parse_url($url, PHP_URL_HOST);
+		$cookie_file=Config::get(Config::CACHE_DIR) . '/cookies/'. (strncasecmp($url_host, 'www.',4)===0?substr($url_host,4):$url_host).'_cookies.txt';
 		$ip_addr = gethostbyname($url_host);
 
 		if (!$ip_addr || strpos($ip_addr, "127.") === 0) {
@@ -332,7 +333,8 @@ class UrlHelper {
 			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 			curl_setopt($ch, CURLOPT_USERAGENT, $useragent ? $useragent : Config::get_user_agent());
 			curl_setopt($ch, CURLOPT_ENCODING, "");
-			curl_setopt($ch, CURLOPT_COOKIEJAR, "/dev/null");
+			curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie_file);
+			curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie_file);
 
 			if  ($http_referrer)
 				curl_setopt($ch, CURLOPT_REFERER, $http_referrer);
