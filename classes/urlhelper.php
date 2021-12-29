@@ -548,6 +548,7 @@ class UrlHelper {
 						preg_match('/(.+?)=([^;]+)((; ([^;]+))*)/', $value,$m);
 						$cookieJar->add(
 							(new KeGi\NetscapeCookieFileHandler\Cookie\Cookie())
+								// no intention to build fully functioning http client, hack it to keep every cookie a very long time
 								->setExpire(new DateTime('2050-01-01 00:00:00'))
 								->setName($m[1])
 								->setValue($m[2])
