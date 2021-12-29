@@ -490,6 +490,19 @@ class UrlHelper {
 				$context_options['http']['proxy'] = Config::get(Config::HTTP_PROXY);
 			}
 
+			$cookieJar = null;
+			if(file_exists($cookie_file)){
+				$cookie_str='';
+				$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
+				$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
+				$domains = $cookieJar->getAll()->toArray();
+				foreach ($domains as $cookies){
+					foreach ($cookies as $key => $value_array){
+						$cookie_str .= $key.'='.$value_array['value'].'; ';
+					}
+				}
+				array_push($context_options['http']['header'], "Cookie: $cookie_str");
+			}
 			$context = stream_context_create($context_options);
 
 			$old_error = error_get_last();
@@ -526,6 +539,19 @@ class UrlHelper {
 						self::$fetch_last_modified = $value;
 					} else if ($key == 'location') {
 						self::$fetch_effective_url = $value;
+					} else if ($key == 'set-cookie') {
+						if(!file_exists($cookie_file)) continue;
+						if(!$cookieJar){
+							$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
+							$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
+						}
+						preg_match('/(.+?)=([^;]+)((; ([^;]+))*)/', $value,$m);
+						$cookieJar->add(
+							(new KeGi\NetscapeCookieFileHandler\Cookie\Cookie())
+								->setExpire(new DateTime('2050-01-01 00:00:00'))
+								->setName($m[1])
+								->setValue($m[2])
+						)->persist();
 					}
 				}
 

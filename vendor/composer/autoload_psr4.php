@@ -11,5 +11,6 @@ return array(
     'Safe\\' => array($vendorDir . '/thecodingmachine/safe/lib', $vendorDir . '/thecodingmachine/safe/deprecated', $vendorDir . '/thecodingmachine/safe/generated'),
     'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'OTPHP\\' => array($vendorDir . '/spomky-labs/otphp/src'),
+    'KeGi\\NetscapeCookieFileHandler\\' => array($vendorDir . '/kegi/netscape-cookie-file-handler/src/NetscapeCookieFileHandler'),
     'Assert\\' => array($vendorDir . '/beberlei/assert/lib/Assert'),
 );

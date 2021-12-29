@@ -3,7 +3,8 @@
         "spomky-labs/otphp": "^10.0",
         "chillerlan/php-qrcode": "^3.3",
         "mervick/material-design-icons": "^2.2",
-        "j4mie/idiorm": "^1.5"
+        "j4mie/idiorm": "^1.5",
+        "kegi/netscape-cookie-file-handler": "^1.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1."

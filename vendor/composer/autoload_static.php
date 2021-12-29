@@ -118,6 +118,10 @@ class ComposerStaticInit19fc2ff1c0f9a92279c7979386bb2056
         array (
             'OTPHP\\' => 6,
         ),
+        'K' => 
+        array (
+            'KeGi\\NetscapeCookieFileHandler\\' => 31,
+        ),
         'A' => 
         array (
             'Assert\\' => 7,
@@ -147,6 +151,10 @@ class ComposerStaticInit19fc2ff1c0f9a92279c7979386bb2056
         array (
             0 => __DIR__ . '/..' . '/spomky-labs/otphp/src',
         ),
+        'KeGi\\NetscapeCookieFileHandler\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/kegi/netscape-cookie-file-handler/src/NetscapeCookieFileHandler',
+        ),
         'Assert\\' => 
         array (
             0 => __DIR__ . '/..' . '/beberlei/assert/lib/Assert',
@@ -154,6 +162,7 @@ class ComposerStaticInit19fc2ff1c0f9a92279c7979386bb2056
     );
 
     public static $classMap = array (
+        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'IdiormMethodMissingException' => __DIR__ . '/..' . '/j4mie/idiorm/idiorm.php',
         'IdiormResultSet' => __DIR__ . '/..' . '/j4mie/idiorm/idiorm.php',
         'IdiormString' => __DIR__ . '/..' . '/j4mie/idiorm/idiorm.php',

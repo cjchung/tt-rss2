@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e6292f986e0c1bccf460250425d42c19",
+    "content-hash": "1a08f538b14c2d8b64ac9a249e6e9d60",
     "packages": [
         {
             "name": "beberlei/assert",
@@ -258,6 +258,55 @@
                 "source": "https://github.com/j4mie/idiorm"
             },
             "time": "2020-04-29T00:37:09+00:00"
+        },
+        {
+            "name": "kegi/netscape-cookie-file-handler",
+            "version": "1.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kegi/netscape-cookie-file-handler.git",
+                "reference": "44fb096f9fb83d444d7f16b07d449220f7219761"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kegi/netscape-cookie-file-handler/zipball/44fb096f9fb83d444d7f16b07d449220f7219761",
+                "reference": "44fb096f9fb83d444d7f16b07d449220f7219761",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0"
+            },
+            "require-dev": {
+                "codeclimate/php-test-reporter": "dev-master",
+                "phpunit/phpunit": "^5.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "KeGi\\NetscapeCookieFileHandler\\": "src/NetscapeCookieFileHandler"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Kevin Gilbert",
+                    "email": "kevin@kegisiteweb.com"
+                }
+            ],
+            "description": "Netscape Cookie File Handler",
+            "keywords": [
+                "cookie",
+                "cookie file",
+                "netscape"
+            ],
+            "support": {
+                "issues": "https://github.com/kegi/netscape-cookie-file-handler/issues",
+                "source": "https://github.com/kegi/netscape-cookie-file-handler/tree/master"
+            },
+            "time": "2016-02-20T00:20:30+00:00"
         },
         {
             "name": "mervick/material-design-icons",
@@ -653,5 +702,5 @@
     "prefer-lowest": false,
     "platform": [],
     "platform-dev": [],
-    "plugin-api-version": "1.1.0"
+    "plugin-api-version": "2.1.0"
 }
