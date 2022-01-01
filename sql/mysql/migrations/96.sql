@@ -5,7 +5,7 @@ create table ttrss_filters2(id integer primary key auto_increment,
 	match_any_rule boolean not null default false,
 	enabled boolean not null default true,
 	index(owner_uid),
-	foreign key (owner_uid) references ttrss_users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+	foreign key (owner_uid) references ttrss_users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 	
 create table ttrss_filters2_rules(id integer primary key auto_increment,
 	filter_id integer not null references ttrss_filters2(id) on delete cascade,
@@ -21,7 +21,7 @@ create table ttrss_filters2_rules(id integer primary key auto_increment,
 	index (feed_id),
 	foreign key (feed_id) references ttrss_feeds(id) ON DELETE CASCADE,
 	index (cat_id),
-	foreign key (cat_id) references ttrss_feed_categories(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+	foreign key (cat_id) references ttrss_feed_categories(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 
 create table ttrss_filters2_actions(id integer primary key auto_increment,
 	filter_id integer not null,
@@ -30,7 +30,7 @@ create table ttrss_filters2_actions(id integer primary key auto_increment,
 	index (filter_id),
 	foreign key (filter_id) references ttrss_filters2(id) on delete cascade,
 	index (action_id),
-	foreign key (action_id) references ttrss_filter_actions(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+	foreign key (action_id) references ttrss_filter_actions(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 
 update ttrss_version set schema_version = 96;
 

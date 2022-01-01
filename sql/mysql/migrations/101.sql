@@ -5,7 +5,7 @@ create table ttrss_plugin_storage (
 	name varchar(100) not null,
 	owner_uid integer not null,
 	content longtext not null,
-  	foreign key (owner_uid) references ttrss_users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+  	foreign key (owner_uid) references ttrss_users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 
 update ttrss_version set schema_version = 101;
 

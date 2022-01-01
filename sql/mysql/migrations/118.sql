@@ -9,7 +9,7 @@ create table ttrss_error_log(
 	lineno integer not null,	
 	context text not null,
 	created_at datetime not null,
-	foreign key (owner_uid) references ttrss_users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+	foreign key (owner_uid) references ttrss_users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 
 update ttrss_version set schema_version = 118;
 

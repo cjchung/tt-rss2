@@ -14,7 +14,7 @@ create table ttrss_linked_feeds (
 	updated datetime not null,
 	instance_id integer not null,
 	subscribers integer not null,
- 	foreign key (instance_id) references ttrss_linked_instances(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8;
+ 	foreign key (instance_id) references ttrss_linked_instances(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4;
 
 drop table ttrss_scheduled_updates;
 
