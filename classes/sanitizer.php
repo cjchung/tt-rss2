@@ -221,7 +221,7 @@ class Sanitizer {
 			}
 		}
 
-		$res = $doc->saveHTML();
+		$res = $doc->saveHTML($doc->documentElement);
 
 		/* strip everything outside of <body>...</body> */
 
