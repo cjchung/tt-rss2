@@ -52,7 +52,7 @@ class Af_Readability extends Plugin {
 
 	function hook_article_button($line) {
 		return "<i class='material-icons' onclick=\"Plugins.Af_Readability.embed(".$line["id"].")\"
-			style='cursor : pointer' title='".__('Toggle full article text')."'>description</i>";
+			style='cursor : pointer' title=\"".__('Toggle full article text')."\">description</i>";
 	}
 
 	function hook_prefs_tab($args) {
@@ -233,8 +233,13 @@ class Af_Readability extends Plugin {
 						}
 
 						if ($entry->hasAttribute("src")) {
+							if ($entry->hasAttribute("data-src")) {
+								$src = $entry->getAttribute("data-src");
+							} else {
+								$src = $entry->getAttribute("src");
+							}
 							$entry->setAttribute("src",
-								UrlHelper::rewrite_relative(UrlHelper::$fetch_effective_url, $entry->getAttribute("src")));
+								UrlHelper::rewrite_relative(UrlHelper::$fetch_effective_url, $src));
 
 						}
 					}
