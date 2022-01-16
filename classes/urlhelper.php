@@ -186,12 +186,23 @@ class UrlHelper {
 		if (version_compare(PHP_VERSION, '7.1.0', '>=')) {
 			$context_options = array(
 				'http' => array(
-					 'header' => array(
-						 'Connection: close'
-					 ),
-					 'method' => 'HEAD',
-					 'timeout' => $timeout,
-					 'protocol_version'=> 1.1)
+					'header' => array(
+						'Connection: close',
+						'User-Agent: '.(Config::get_user_agent() ?: ''),
+						'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+						'Accept-Language: zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6'
+					),
+					'method' => 'GET',
+					'ignore_errors' => true,
+					'verify_peer' => false,
+					'verify_peer_name' => false,
+					'timeout' => $timeout ? $timeout : Config::get(Config::FILE_FETCH_TIMEOUT),
+					'protocol_version'=> 1.1
+				),
+				'ssl' => array(
+					'verify_peer' => false,
+					'verify_peer_name' => false
+				)
 				);
 
 			if (Config::get(Config::HTTP_PROXY)) {
@@ -333,6 +344,7 @@ class UrlHelper {
 			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 			curl_setopt($ch, CURLOPT_USERAGENT, $useragent ? $useragent : Config::get_user_agent());
 			curl_setopt($ch, CURLOPT_ENCODING, "");
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 			curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie_file);
 			curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie_file);
 
@@ -468,12 +480,22 @@ class UrlHelper {
 			 $context_options = array(
 				  'http' => array(
 						'header' => array(
-							'Connection: close'
+							'Connection: close',
+							'User-Agent: '.($useragent ?: Config::get_user_agent()),
+							'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+							'Accept-Language: zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6'
 						),
 						'method' => 'GET',
 						'ignore_errors' => true,
+						'verify_peer' => false,
+					  'verify_peer_name' => false,
 						'timeout' => $timeout ? $timeout : Config::get(Config::FILE_FETCH_TIMEOUT),
-						'protocol_version'=> 1.1)
+						'protocol_version'=> 1.1
+				  ),
+				 'ssl' => array(
+					 'verify_peer' => false,
+					 'verify_peer_name' => false
+				 )
 				  );
 
 			if (!$post_query && $last_modified)
@@ -492,6 +514,7 @@ class UrlHelper {
 
 			$cookieJar = null;
 			if(file_exists($cookie_file)){
+				Debug::log("[UrlHelper] cookie file exists: $cookie_file)", Debug::LOG_VERBOSE);
 				$cookie_str='';
 				$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
 				$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
@@ -501,6 +524,7 @@ class UrlHelper {
 						$cookie_str .= $key.'='.$value_array['value'].'; ';
 					}
 				}
+				Debug::log("[UrlHelper] cookie str: $cookie_str)", Debug::LOG_EXTENDED);
 				array_push($context_options['http']['header'], "Cookie: $cookie_str");
 			}
 			$context = stream_context_create($context_options);
@@ -553,6 +577,7 @@ class UrlHelper {
 								->setName($m[1])
 								->setValue($m[2])
 						)->persist();
+						Debug::log("[UrlHelper] set cookie: $m[1])", Debug::LOG_EXTENDED);
 					}
 				}
 
