@@ -4,7 +4,6 @@ Thumbs.db
 /node_modules
 /locale/**/*.po~
 /package-lock.json
-/plugins.local/*
 /themes.local/*
 /config.php
 /feed-icons/*
