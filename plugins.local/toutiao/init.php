@@ -157,7 +157,7 @@ class toutiao extends Plugin{
 
 
 	protected function  parse_page(&$article){
-		$html=UrlHelper::fetch(["url" => $article['link']]);
+		$html=UrlHelper::fetch(["url" => $article['link'],'followlocation'=>true]);
 		if(!$html) return false;
 		$fetch_effective_url = UrlHelper::$fetch_effective_url;
 		$doc = new DOMDocument();
@@ -168,8 +168,14 @@ class toutiao extends Plugin{
 				Debug::log("not redirected to weixin");
 				$link=$xpath->evaluate('string(//a[small[text()="(查看原文)"]]/@href)');
 				if($link){
+					if(strpos($link,'/k/')===0){
+						//subscriptions
+						$link='https://toutiao.io'.$link;
+					}
+
 					Debug::log("redirect link found: $link",Debug::LOG_EXTENDED);
-					$html=UrlHelper::fetch(["url" => $link]);
+					$html=UrlHelper::fetch(["url" => $link,'followlocation'=>true]);
+					Debug::log("fetch_effective_url = ".UrlHelper::$fetch_effective_url,Debug::LOG_EXTENDED);
 				}else{
 					Debug::log("redirect link for weixin not exist.");
 					return false;
@@ -195,7 +201,8 @@ class toutiao extends Plugin{
 				$article['tags'][]=$tag->nodeValue;
 			}
 		}else{
-			$article['content']=$html;
+			$article['content']='';
+			Debug::log("empty content",Debug::LOG_EXTENDED);
 		}
 		return true;
 	}
