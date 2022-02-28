@@ -693,6 +693,8 @@ class Af_RedditImgur extends Plugin {
 
 				if ($node && $found) {
 					$article["content"] = $doc->saveHTML($node);
+					$article["content"] = preg_replace('~   submitted by   .+? <br> ~','',$article["content"]);
+					$article["content"] = preg_replace('~<a href="https://.*?\[link].+?</td>~','</span> </td>',$article["content"]);
 					$article["enclosures"] = $this->generated_enclosures;
 				} else if ($content_link) {
 					$article = $this->readability($article, $content_link->getAttribute("href"), $doc, $xpath);
