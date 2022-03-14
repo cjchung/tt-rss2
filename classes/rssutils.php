@@ -466,6 +466,7 @@ class RSSUtils {
 			]);
 
 			$feed_data = trim($feed_data);
+			$feed_data=str_replace('&raquo;','',$feed_data);
 
 			Debug::log("fetch done.", Debug::LOG_VERBOSE);
 			Debug::log(sprintf("effective URL (after redirects): %s (IP: %s) ", UrlHelper::$fetch_effective_url, UrlHelper::$fetch_effective_ip_addr), Debug::LOG_VERBOSE);

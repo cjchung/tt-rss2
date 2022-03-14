@@ -33,7 +33,7 @@ class lpsg extends Plugin implements IHandler {
 		if (!($threadId && $pageNo))
 			return $feed_data;
 
-		$commentCount = $pageNo * 30 - 1;
+		$commentCount = $pageNo * 20 - 1;
 		$this->manualMode = true;
 
 		return "<rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\" xmlns:slash=\"http://purl.org/rss/1.0/modules/slash/\" version=\"2.0\">
@@ -82,7 +82,7 @@ class lpsg extends Plugin implements IHandler {
 			$titleNode = $itemNode->getElementsByTagName('title')->item(0);
 			$title = $titleNode->nodeValue;
 			$commentsCount = $itemNode->getElementsByTagNameNS('http://purl.org/rss/1.0/modules/slash/', 'comments')->item(0)->nodeValue;
-			$pageNo = intdiv(($commentsCount), 30) + 1;
+			$pageNo = intdiv(($commentsCount), 20) + 1;
 			$guid = "lpsg:$threadId:$pageNo";
 			if ($pageNo > 1)
 				$link .= "page-$pageNo";
@@ -179,6 +179,14 @@ class lpsg extends Plugin implements IHandler {
 							}
 							break;
 					}
+				}
+			}
+			foreach ($xpath->query('.//img', $contentNote) as $img){
+				$dataSrc=$img->getAttribute('data-src');
+				if($dataSrc)
+					$img->setAttribute('src', $dataSrc);
+				foreach (['data-url','class','data-zoom-target','style','loading'] as $att){
+					$img->removeAttribute($att);
 				}
 			}
 

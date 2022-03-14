@@ -529,7 +529,7 @@ class UrlHelper {
 
 			$cookieJar = null;
 			if(file_exists($cookie_file)){
-				Debug::log("[UrlHelper] cookie file exists: $cookie_file)", Debug::LOG_VERBOSE);
+				Debug::log("[UrlHelper] cookie file exists: $cookie_file", Debug::LOG_VERBOSE);
 				$cookie_str='';
 				$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
 				$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
@@ -539,28 +539,28 @@ class UrlHelper {
 						$cookie_str .= $key.'='.$value_array['value'].'; ';
 					}
 				}
-				Debug::log("[UrlHelper] cookie str: $cookie_str)", Debug::LOG_EXTENDED);
+				Debug::log("[UrlHelper] cookie str: $cookie_str", Debug::LOG_EXTENDED);
 				array_push($context_options['http']['header'], "Cookie: $cookie_str");
 			}
 			$context = stream_context_create($context_options);
 
 			$old_error = error_get_last();
 
-			self::$fetch_effective_url = self::resolve_redirects($url, $timeout ? $timeout : Config::get(Config::FILE_FETCH_CONNECT_TIMEOUT));
-
-			if (!self::validate(self::$fetch_effective_url, true)) {
-				self::$fetch_last_error = "URL received after redirection failed extended validation.";
-
-				return false;
-			}
-
-			self::$fetch_effective_ip_addr = gethostbyname(parse_url(self::$fetch_effective_url, PHP_URL_HOST));
-
-			if (!self::$fetch_effective_ip_addr || strpos(self::$fetch_effective_ip_addr, "127.") === 0) {
-				self::$fetch_last_error = "URL hostname received after redirection failed to resolve or resolved to a loopback address (".self::$fetch_effective_ip_addr.")";
-
-				return false;
-			}
+//			self::$fetch_effective_url = self::resolve_redirects($url, $timeout ? $timeout : Config::get(Config::FILE_FETCH_CONNECT_TIMEOUT));
+//
+//			if (!self::validate(self::$fetch_effective_url, true)) {
+//				self::$fetch_last_error = "URL received after redirection failed extended validation.";
+//
+//				return false;
+//			}
+//
+//			self::$fetch_effective_ip_addr = gethostbyname(parse_url(self::$fetch_effective_url, PHP_URL_HOST));
+//
+//			if (!self::$fetch_effective_ip_addr || strpos(self::$fetch_effective_ip_addr, "127.") === 0) {
+//				self::$fetch_last_error = "URL hostname received after redirection failed to resolve or resolved to a loopback address (".self::$fetch_effective_ip_addr.")";
+//
+//				return false;
+//			}
 
 			$data = @file_get_contents($url, false, $context);
 
@@ -592,7 +592,7 @@ class UrlHelper {
 								->setName($m[1])
 								->setValue($m[2])
 						)->persist();
-						Debug::log("[UrlHelper] set cookie: $m[1])", Debug::LOG_EXTENDED);
+						Debug::log("[UrlHelper] set cookie: $m[1]=$m[2]", Debug::LOG_EXTENDED);
 					}
 				}
 

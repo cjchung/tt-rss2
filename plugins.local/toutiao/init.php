@@ -3,6 +3,7 @@ use \andreskrey\Readability\Readability;
 use \andreskrey\Readability\Configuration;
 
 class toutiao extends Plugin{
+	private $host;
 
 	private static ?DateTimeZone $TZ=null;
 
@@ -15,6 +16,8 @@ class toutiao extends Plugin{
 	}
 
 	function init($host) {
+		$this->host = $host;
+
 		$host->add_hook($host::HOOK_FEED_FETCHED, $this);
 		$host->add_hook($host::HOOK_ARTICLE_FILTER, $this);
 	}
@@ -44,8 +47,8 @@ class toutiao extends Plugin{
 		$force_rehash = isset($_REQUEST["force_rehash"]);
 
 		$doc = new DOMDocument();
-		$sth_guid = $this->pdo->prepare("select 1 from  ttrss_entries where guid = ?");
-		$sth_author_title = $this->pdo->prepare("select 1 from  ttrss_entries where author= ? and title= ?");
+		$sth_guid = $this->pdo->prepare("select * from  ttrss_entries where guid = ?");
+		$sth_author_title = $this->pdo->prepare("select * from  ttrss_entries where author= ? and title= ?");
 
 		$doc->loadHTML('<?xml encoding="utf-8" ?>'.$feed_data);
 		$xpath = new DOMXPath($doc);
@@ -58,8 +61,9 @@ class toutiao extends Plugin{
 		$rss = '<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/"><channel><title>' . htmlspecialchars($rssTitleText) . '</title><link>' . htmlspecialchars($fetch_url) . '</link>';
 
 		$itemNodes = $xpath->query('//div[@class="post"]');
-		$counter=0;
+		$newArticleCount=0;
 		foreach ($itemNodes as $itemNode) {
+			$oldArticle=false;
 			$linkNode=$xpath->query('.//h3/a', $itemNode)[0];
 			$link=$linkNode->getAttribute('href');
 			if(substr($link,0,4)!=='http'){
@@ -75,23 +79,24 @@ class toutiao extends Plugin{
 			}
 			$entry_guid = $link;
 			$entry_guid_hashed = json_encode(["ver" => 2, "uid" => $owner_uid, "hash" => 'SHA1:' . sha1($entry_guid)]);
-			Debug::log("link=$link",Debug::LOG_VERBOSE);
 
 			$title=$linkNode->nodeValue;
-			$author=$xpath->query('.//div[@class="subject-name"]/a', $itemNode)[0]->nodeValue;
-			if(!$force_rehash){
-				$sth_guid->execute([$entry_guid_hashed]);
-				if ($row = $sth_guid->fetch()) {
-					Debug::log("SKIP existing record...$entry_guid_hashed", Debug::LOG_VERBOSE);
-					continue;
-				}
+
+			$obj=$xpath->query('.//div[@class="subject-name"]/a', $itemNode)[0];
+			// 如果是作者主頁 author欄位會是空的
+			$author=is_object($obj)?$obj->nodeValue:'';
+			$sth_guid->execute([$entry_guid_hashed]);
+			if ($row = $sth_guid->fetch()) {
+				$oldArticle=true;
+			}else{
 				$sth_author_title->execute([$author, $title]);
 				if ($row = $sth_author_title->fetch()) {
-					Debug::log("SKIP existing record...$title [$author]",Debug::LOG_VERBOSE);
-					continue;
+					$oldArticle=true;
 				}
 			}
 			$meta=trim($xpath->evaluate('string(.//div[@class="meta"]/text())', $itemNode));
+			// hardcode, skip invalid site
+			if($meta=='club.perfma.com')continue;
 			$article=['link' => $link, 'author' => $author, 'title' => $title, 'meta'=>$meta];
 			Debug::log("link: $link",Debug::LOG_VERBOSE);
 			Debug::log("title: $title",Debug::LOG_VERBOSE);
@@ -116,10 +121,12 @@ class toutiao extends Plugin{
 			Debug::log("replies: $replies",Debug::LOG_VERBOSE);
 			$likes += $replies * 20;
 			Debug::log("comments(score): $likes",Debug::LOG_VERBOSE);
-			if(!$this->parse_page($article)){
+
+			if($oldArticle && $likes==$row['num_comments']){
+				Debug::log("SKIP existing record [num_comments]",Debug::LOG_VERBOSE);
 				continue;
 			}
-
+			$this->parse_page($article);
 			$rss .= "<item><title>" . htmlspecialchars($article['title']) .
 				"</title><link>" . htmlspecialchars($article['link']) .
 				"</link><guid>".htmlspecialchars($entry_guid)."</guid><author>" . htmlspecialchars($article['author']) .
@@ -136,28 +143,75 @@ class toutiao extends Plugin{
 			}
 
 			$rss .= "</item>";
-			if($counter++>=10) break;
-
+			if(!$oldArticle) ++$newArticleCount;
+			if((!extension_loaded('xdebug'))&&$newArticleCount>=5) break;
 		}
 		$rss .= "</channel></rss>";
+		if($newArticleCount==0){
+			$nextLink=false;
+			$nextLinkNode = $xpath->query('(//a[@rel="prev"]/@href)[1]');
+			if($nextLinkNode->length && $nextLinkNode[0]->value){
+				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+			}else{
+				$nextLinkNode = $xpath->query('(//a[contains(text(),"末页")]/@href)[1]');
+				if($nextLinkNode->length && $nextLinkNode[0]->value){
+					$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+				}
+			}
+			if($nextLink){
+				$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
+				$sth_update_feedUrl->execute([$nextLink, $feed]);
+			}
+		}
 		return $rss;
 
 	}
 
 	function hook_article_filter($article) {
-		if (strpos($article['link'],'toutiao')===false) {
+		if (strpos($article['guid'],'toutiao')===false) {
 			return $article;
 		}
 
 		if($article["num_comments"]){
 			$article["score_modifier"]=$article["num_comments"];
 		}
+		if(!$article['content']){
+			$this->host->run_hooks_callback(PluginHost::HOOK_GET_FULL_TEXT,
+				function ($result) use (&$article) {
+					if ($result) {
+						$article["content"]  = $result;
+						return true;
+					}
+				},
+				$article['link']);
+
+		}
 		return $article;
 	}
 
 
-	protected function  parse_page(&$article){
-		$html=UrlHelper::fetch(["url" => $article['link'],'followlocation'=>true]);
+	protected function  parse_page(&$article,$c=0){
+		if($c>3) return true;
+		// hardcode: avoid some site for old ssl library
+//		if(OPENSSL_VERSION_NUMBER < 0x1000300f) {
+			switch ($article['meta']){
+				case 'blog.dteam.top':
+				case 'jianshu.com':
+				case 'hollischuang.com':
+					$article['content']='';
+					return true;
+			}
+//		}
+		$link=$article['link'];
+//		$cache_filename = Config::get(Config::CACHE_DIR) . "/feeds/toutiao-" . sha1($link) . ".xml";
+//		if(file_exists($cache_filename)){
+//			$html= file_get_contents($cache_filename);
+//		}else{
+//			$html=UrlHelper::fetch(["url" => $link,'followlocation'=>true]);
+//			if($html)file_put_contents($cache_filename, $html);
+//		}
+		$html=UrlHelperExt::fetch_cached(["url" => $link,'followlocation'=>true]);
+
 		if(!$html) return false;
 		$fetch_effective_url = UrlHelper::$fetch_effective_url;
 		$doc = new DOMDocument();
@@ -174,18 +228,25 @@ class toutiao extends Plugin{
 					}
 
 					Debug::log("redirect link found: $link",Debug::LOG_EXTENDED);
-					$html=UrlHelper::fetch(["url" => $link,'followlocation'=>true]);
+					$html=UrlHelperExt::fetch_cached(["url" => $link,'followlocation'=>true]);
 					Debug::log("fetch_effective_url = ".UrlHelper::$fetch_effective_url,Debug::LOG_EXTENDED);
 				}else{
 					Debug::log("redirect link for weixin not exist.");
 					return false;
 				}
 			}
+			// TODO: 微信文章已搬移時還需處裡
+			if(strpos($html,'该公众号已迁移')){
+				if(preg_match("/transferTargetLink = '(.+?)'/",$html,$m)){
+					$article['link']=$m[1];
+					return $this->parse_page($article,++$c);
+				}
+			}
 			$contentNode = $xpath->query('//div[contains(@class,"rich_media_content")]')[0];
 			foreach ($xpath->query('.//img', $contentNode) as $img){
-				$img->setAttribute('src', $img->getAttribute('data-src'));
+				$img->setAttribute('src', 'https://imageproxy.pimg.tw/resize?url='.$img->getAttribute('data-src'));
 			}
-			if(preg_match('/var o="\d+",n="\d+",t="(\d+-\d+-\d+ \d+:\d+)";/',$html,$m)){
+			if(preg_match('/="(\d{4}-\d{2}-\d{2} \d{2}:\d{2})";/',$html,$m)){
 				$article['pubDate'] = date(DATE_RFC2822,(DateTime::createFromFormat('Y-m-d G:i',$m[1],self::$TZ))->getTimestamp());
 			}
 			foreach ($xpath->query('(//*[@class="article-tag__item"]|//*[@id="copyright_logo"])') as $tag){
@@ -204,6 +265,7 @@ class toutiao extends Plugin{
 			$article['content']='';
 			Debug::log("empty content",Debug::LOG_EXTENDED);
 		}
+		$article['link']=UrlHelper::$fetch_effective_url;
 		return true;
 	}
 
