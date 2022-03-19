@@ -645,6 +645,12 @@ class Af_RedditImgur extends Plugin {
 	function hook_article_filter($article) {
 
 		if (strpos($article["link"], "reddit.com/r/") !== false && !empty($article["content"])) {
+			// change comment url to post url
+			$user_comment=false;
+			if(preg_match('~(https://www\.reddit\.com/r/.+?/comments/.+?/.+?/).+?/~',$article["link"],$m)){
+				$article["link"]=$m[1];
+				$user_comment=true;
+			}
 			$doc = new DOMDocument();
 
 			if (@$doc->loadHTML($article["content"])) {
@@ -693,11 +699,29 @@ class Af_RedditImgur extends Plugin {
 
 				if ($node && $found) {
 					$article["content"] = $doc->saveHTML($node);
-					$article["content"] = preg_replace('~   submitted by   .+? <br> ~','',$article["content"]);
-					$article["content"] = preg_replace('~<a href="https://.*?\[link].+?</td>~','</span> </td>',$article["content"]);
 					$article["enclosures"] = $this->generated_enclosures;
 				} else if ($content_link) {
 					$article = $this->readability($article, $content_link->getAttribute("href"), $doc, $xpath);
+				}
+				else if($user_comment) {
+					$url = str_replace('www.reddit.com', 'teddit.net', $article['link']);
+					$tmp = UrlHelper::fetch(["url" => $url, "http_accept" => "text/*", "type" => "text/html"]);
+					$doc = new DOMDocument();
+
+					$doc->loadHTML($tmp);
+					$xpath = new DOMXPath($doc);
+					$post = $xpath->query('//div[@id="post"]')[0];
+					foreach ($xpath->query('(.//img|.//source)',$post) as $img){
+						$img->setAttribute('src','https://teddit.net/'.$img->getAttribute('src'));
+					}
+					foreach ($xpath->query('.//a',$post) as $a){
+						$a->setAttribute('href','https://teddit.net/'.$a->getAttribute('href'));
+					}
+					foreach ($xpath->query('(.//header|.//div[@class="info"]|.//div[@class="comments-info"]|.//div[@class="comments"])',$post) as $h){
+						$post->removeChild($h);
+					}
+					$article["content"] = $doc->saveHTML($post);
+
 				}
 			}
 		}

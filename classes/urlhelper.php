@@ -523,8 +523,14 @@ class UrlHelper {
 				array_push($context_options['http']['header'], "Referer: $http_referrer");
 
 			if (Config::get(Config::HTTP_PROXY)) {
-				$context_options['http']['request_fulluri'] = true;
-				$context_options['http']['proxy'] = Config::get(Config::HTTP_PROXY);
+				$byProxy=true;
+				if($PROXY_HOSTS=getenv('PROXY_HOSTS')){
+					$byProxy=strpos($PROXY_HOSTS, $url_host)!==false;
+				}
+				if($byProxy){
+					$context_options['http']['request_fulluri'] = true;
+					$context_options['http']['proxy'] = Config::get(Config::HTTP_PROXY);
+				}
 			}
 
 			$cookieJar = null;

@@ -60,6 +60,23 @@ class toutiao extends Plugin{
 
 		$rss = '<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/"><channel><title>' . htmlspecialchars($rssTitleText) . '</title><link>' . htmlspecialchars($fetch_url) . '</link>';
 
+		//直接先換頁，才不會一直卡在出錯的地方
+		$nextLink=false;
+		$nextLinkNode = $xpath->query('(//a[@rel="prev"]/@href)[1]');
+		if($nextLinkNode->length && $nextLinkNode[0]->value){
+			$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+		}else{
+			$nextLinkNode = $xpath->query('(//a[contains(text(),"末页")]/@href)[1]');
+			if($nextLinkNode->length && $nextLinkNode[0]->value){
+				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+			}
+		}
+		if($nextLink){
+			$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
+			$sth_update_feedUrl->execute([$nextLink, $feed]);
+		}
+
+
 		$itemNodes = $xpath->query('//div[@class="post"]');
 		$newArticleCount=0;
 		foreach ($itemNodes as $itemNode) {
@@ -148,20 +165,20 @@ class toutiao extends Plugin{
 		}
 		$rss .= "</channel></rss>";
 		if($newArticleCount==0){
-			$nextLink=false;
-			$nextLinkNode = $xpath->query('(//a[@rel="prev"]/@href)[1]');
-			if($nextLinkNode->length && $nextLinkNode[0]->value){
-				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
-			}else{
-				$nextLinkNode = $xpath->query('(//a[contains(text(),"末页")]/@href)[1]');
-				if($nextLinkNode->length && $nextLinkNode[0]->value){
-					$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
-				}
-			}
-			if($nextLink){
-				$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
-				$sth_update_feedUrl->execute([$nextLink, $feed]);
-			}
+//			$nextLink=false;
+//			$nextLinkNode = $xpath->query('(//a[@rel="prev"]/@href)[1]');
+//			if($nextLinkNode->length && $nextLinkNode[0]->value){
+//				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+//			}else{
+//				$nextLinkNode = $xpath->query('(//a[contains(text(),"末页")]/@href)[1]');
+//				if($nextLinkNode->length && $nextLinkNode[0]->value){
+//					$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
+//				}
+//			}
+//			if($nextLink){
+//				$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
+//				$sth_update_feedUrl->execute([$nextLink, $feed]);
+//			}
 		}
 		return $rss;
 

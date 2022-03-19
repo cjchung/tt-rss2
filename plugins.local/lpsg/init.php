@@ -3,11 +3,14 @@
 class lpsg extends Plugin implements IHandler {
 
 	private bool $manualMode = false;
+	private static int $PAGE_SIZE = 30;
+	private static array $PAGE_LIKE_CACHE = [];
 
 	function init($host) {
 		$host->add_hook($host::HOOK_FEED_FETCHED, $this);
 		$host->add_hook($host::HOOK_FETCH_FEED, $this);
 		$host->add_hook($host::HOOK_IFRAME_WHITELISTED, $this);
+		$host->add_hook($host::HOOK_ARTICLE_FILTER, $this);
 	}
 
 	function hook_iframe_whitelisted($src): bool {
@@ -33,7 +36,7 @@ class lpsg extends Plugin implements IHandler {
 		if (!($threadId && $pageNo))
 			return $feed_data;
 
-		$commentCount = $pageNo * 20 - 1;
+		$commentCount = $pageNo * self::$PAGE_SIZE - 1;
 		$this->manualMode = true;
 
 		return "<rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\" xmlns:slash=\"http://purl.org/rss/1.0/modules/slash/\" version=\"2.0\">
@@ -82,7 +85,7 @@ class lpsg extends Plugin implements IHandler {
 			$titleNode = $itemNode->getElementsByTagName('title')->item(0);
 			$title = $titleNode->nodeValue;
 			$commentsCount = $itemNode->getElementsByTagNameNS('http://purl.org/rss/1.0/modules/slash/', 'comments')->item(0)->nodeValue;
-			$pageNo = intdiv(($commentsCount), 20) + 1;
+			$pageNo = intdiv(($commentsCount), self::$PAGE_SIZE) + 1;
 			$guid = "lpsg:$threadId:$pageNo";
 			if ($pageNo > 1)
 				$link .= "page-$pageNo";
@@ -125,11 +128,24 @@ class lpsg extends Plugin implements IHandler {
 			$category = $doc->createElement('category');
 			$category->nodeValue = 'lpsg' . $threadId;
 			$itemNode->appendChild($category);
+//			$itemNode->appendChild($doc->createElementNS('http://purl.org/rss/1.0/modules/slash','comments',$pageInfo['likes']));
+			self::$PAGE_LIKE_CACHE[$link]=$pageInfo['likes'];
 			$itemsCount++;
 		}
 		return $doc->saveXML();
 
 	}
+	function hook_article_filter($article) {
+		if (strpos($article['guid'],'lpsg')===false) {
+			return $article;
+		}
+
+		if(key_exists($article['link'],self::$PAGE_LIKE_CACHE)){
+			$article["score_modifier"]=self::$PAGE_LIKE_CACHE[$article['link']];
+		}
+		return $article;
+	}
+
 
 	function parsePage($link): array {
 		$pageInfo = [];
@@ -159,7 +175,9 @@ class lpsg extends Plugin implements IHandler {
 		$html = false;
 		$userName = '';
 		$starTag = false;
+		$pageLikes=0;
 		foreach ($segmentNodes as $segmentNode) {
+			$segmentLikes=0;
 			$contentNote = $xpath->query('.//article/div', $segmentNode)[0];
 			$userName = $segmentNode->parentNode->getAttribute('data-author');// $xpath->query('.//a[contains(class,"username")]/text()',$segmentNode);//->item(0)->nodeValue;
 			$id = $segmentNode->parentNode->getAttribute('id');
@@ -171,35 +189,44 @@ class lpsg extends Plugin implements IHandler {
 					switch ($node->nodeType) {
 						case XML_ELEMENT_NODE:
 							$likeStr .= '👍';
+							$segmentLikes++;
 							break;
 						case XML_TEXT_NODE:
 							$t = $node->nodeValue;
 							if (preg_match('/and (\d+) other/', $t, $m)) {
 								$likeStr .= str_repeat('👍', $m[1]);
+								$segmentLikes += $m[1];
 							}
 							break;
 					}
 				}
 			}
-			foreach ($xpath->query('.//img', $contentNote) as $img){
+			foreach ($xpath->query('(.//img|.//video|.//source)', $contentNote) as $img){
 				$dataSrc=$img->getAttribute('data-src');
 				if($dataSrc)
 					$img->setAttribute('src', $dataSrc);
+				$dataSrc=$img->getAttribute('data-poster');
+				if($dataSrc)
+					$img->setAttribute('poster', $dataSrc);
 				foreach (['data-url','class','data-zoom-target','style','loading'] as $att){
 					$img->removeAttribute($att);
 				}
 			}
 
+			foreach ($xpath->query('.//div[contains(@class,"bbCodeBlock-expandLink")]', $contentNote) as $d){
+				$d->parentNode->removeChild($d);
+			}
 			if ((!$starTag) && (mb_strlen($likeStr) >= 5)) {
 				$starTag = true;
 			}
 
 			$html .= "<div>$userName ✍ $likeStr</div>";
 			$html .= '<div>' . preg_replace('/\s\s+/', '', $doc->saveHTML($contentNote)) . '</div><br><hr><br>';
-
+			$pageLikes+=$segmentLikes;
 		}
 		$pageInfo['author'] = $userName;
 		$pageInfo['html'] = $html;
+		$pageInfo['likes'] = $pageLikes;
 		if ($starTag) {
 			$pageInfo['title'] = '❤️'. $pageInfo['title'];
 		}
