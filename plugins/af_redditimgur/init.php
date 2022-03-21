@@ -404,6 +404,9 @@ class Af_RedditImgur extends Plugin {
 		foreach ($entries as $entry) {
 			$entry_href = $entry->getAttribute("href");
 
+			//hardcode skip refer link inserted by bot
+			if(strpos($entry_href, 'wolframalpha')) continue;
+
 			$matches = [];
 
 			/* skip links going back to reddit (and any other blacklisted stuff) */
