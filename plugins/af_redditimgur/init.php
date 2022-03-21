@@ -297,6 +297,7 @@ class Af_RedditImgur extends Plugin {
 
 		$found = false;
 		$post_is_nsfw = false;
+		$save_video = false;
 		$num_comments = 0;
 		$score = 0;
 		$link_flairs = [];
@@ -321,6 +322,7 @@ class Af_RedditImgur extends Plugin {
 
 				if ($json) {
 					Debug::log("JSON: processing media elements...", Debug::LOG_EXTENDED);
+					$save_video= stripos($article['author'], 'savevideo')===false && stripos($tmp, 'savevideo')!==false;
 
 					if ($this->dump_json_data) print_r($json);
 
@@ -377,6 +379,9 @@ class Af_RedditImgur extends Plugin {
 
 		if ($post_is_nsfw && count($apply_nsfw_tags) > 0) {
 			$article["tags"] = array_merge($article["tags"], $apply_nsfw_tags);
+		}
+		if ($save_video) {
+			$article["tags"] = array_merge($article["tags"], ['svvdo']);
 		}
 
 		if (count($link_flairs) > 0) {
