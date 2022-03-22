@@ -55,7 +55,7 @@ class imagefap extends Plugin{
 			}
 		}
 
-		$sth_guid = $this->pdo->prepare("select 1 from  ttrss_entries where guid = ? and date_updated > DATE_SUB(NOW(), INTERVAL 1 DAY)");
+		$sth_guid = $this->pdo->prepare("select 1 from  ttrss_entries where guid = ? and date_updated > DATE_SUB(NOW(), INTERVAL 8 HOUR )");
 //		$sth_author_title = $this->pdo->prepare("select 1 from  ttrss_entries where author= ? and title= ?");
 		$feed_data=UrlHelper::fetch(["url" => $fetch_url,'followlocation'=>true]);
 
@@ -88,12 +88,12 @@ class imagefap extends Plugin{
 			$pubDate=trim($tds[3]->nodeValue, " \t\n\r\0\x0B\xC2\xA0");
 
 			$i++;
-			if($imagesCount && $imagesCount < 10){
+			if($imagesCount && $imagesCount < 10 ){
 				Debug::log("SKIP imagesCount<10, $imagesCount", Debug::LOG_VERBOSE);
 				continue;
 			}
 			if(strpos($pubDate, ':')!==false){
-				Debug::log("SKIP pubDate: $pubDate", Debug::LOG_VERBOSE);
+				Debug::log("SKIP pubDate: $pubDate (not old enought)", Debug::LOG_VERBOSE);
 				continue;
 			}
 			$pubDate=$pubDate.'T00:00:00+08:00';
