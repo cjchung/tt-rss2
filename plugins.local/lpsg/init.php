@@ -3,7 +3,7 @@
 class lpsg extends Plugin implements IHandler {
 
 	private bool $manualMode = false;
-	private static int $PAGE_SIZE = 30;
+	private static int $PAGE_SIZE = 20;
 	private static array $PAGE_LIKE_CACHE = [];
 
 	function init($host) {
