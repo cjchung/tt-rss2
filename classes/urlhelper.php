@@ -512,7 +512,7 @@ class UrlHelper {
 						'method' => 'GET',
 						'ignore_errors' => true,
 						'verify_peer' => false,
-					  'verify_peer_name' => false,
+					    'verify_peer_name' => false,
 						'timeout' => $timeout ? $timeout : Config::get(Config::FILE_FETCH_TIMEOUT),
 						'protocol_version'=> 1.1
 				  ),
@@ -533,8 +533,13 @@ class UrlHelper {
 
 			if (Config::get(Config::HTTP_PROXY)) {
 				$byProxy=true;
-				if($PROXY_HOSTS=getenv('PROXY_HOSTS')){
-					$byProxy=strpos($PROXY_HOSTS, $url_host)!==false;
+				static $SKIP_PROXY_HOSTS= false;
+				if($SKIP_PROXY_HOSTS===false){
+					$SKIP_PROXY_HOSTS=getenv('SKIP_PROXY_HOSTS')?:'';
+				}
+
+				if($SKIP_PROXY_HOSTS){
+					$byProxy=strpos($SKIP_PROXY_HOSTS, $url_host)===false;
 				}
 				if($byProxy){
 					$context_options['http']['request_fulluri'] = true;

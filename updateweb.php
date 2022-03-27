@@ -146,7 +146,7 @@
 //                "quiet" => false
 //    ];
 $options=$_GET;
-$options["log"] = __DIR__."/".(isset($options["log"])?$options["log"]:"update.log");//.$counter;
+$options["log"] = __DIR__."/".($options["log"] ?? "update.log");//.$counter;
 
 	if ($options === false || count($options) == 0 || isset($options["help"]) ) {
 		print "Tiny Tiny RSS CLI management tool\n";

@@ -3,7 +3,7 @@ use \andreskrey\Readability\Readability;
 use \andreskrey\Readability\Configuration;
 
 class toutiao extends Plugin{
-	private $host;
+	private PluginHost $host;
 
 	private static ?DateTimeZone $TZ=null;
 
