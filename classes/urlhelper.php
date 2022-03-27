@@ -510,10 +510,11 @@ class UrlHelper {
 							'Accept-Language: zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6'
 						),
 						'method' => 'GET',
-						'ignore_errors' => true,
-						'verify_peer' => false,
-					    'verify_peer_name' => false,
+//						'ignore_errors' => true,
+//						'verify_peer' => false,
+//					    'verify_peer_name' => false,
 						'timeout' => $timeout ? $timeout : Config::get(Config::FILE_FETCH_TIMEOUT),
+						'follow_location' => $followlocation?1:0,
 						'protocol_version'=> 1.1
 				  ),
 				 'ssl' => array(

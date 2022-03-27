@@ -48,7 +48,7 @@ class toutiao extends Plugin{
 
 		$doc = new DOMDocument();
 		$sth_guid = $this->pdo->prepare("select * from  ttrss_entries where guid = ?");
-		$sth_author_title = $this->pdo->prepare("select * from  ttrss_entries where author= ? and title= ?");
+//		$sth_author_title = $this->pdo->prepare("select * from  ttrss_entries where author= ? and title= ?");
 
 		$doc->loadHTML('<?xml encoding="utf-8" ?>'.$feed_data);
 		$xpath = new DOMXPath($doc);
@@ -71,7 +71,7 @@ class toutiao extends Plugin{
 				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
 			}
 		}
-		if($nextLink){
+		if($nextLink && !extension_loaded('xdebug')){
 			$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
 			$sth_update_feedUrl->execute([$nextLink, $feed]);
 		}
@@ -105,26 +105,13 @@ class toutiao extends Plugin{
 			$sth_guid->execute([$entry_guid_hashed]);
 			if ($row = $sth_guid->fetch()) {
 				$oldArticle=true;
-			}else{
-				$sth_author_title->execute([$author, $title]);
-				if ($row = $sth_author_title->fetch()) {
-					$oldArticle=true;
-				}
 			}
 			$meta=trim($xpath->evaluate('string(.//div[@class="meta"]/text())', $itemNode));
-			// hardcode, skip invalid site
-			if($meta=='club.perfma.com')continue;
 			$article=['link' => $link, 'author' => $author, 'title' => $title, 'meta'=>$meta];
 			Debug::log("link: $link",Debug::LOG_VERBOSE);
 			Debug::log("title: $title",Debug::LOG_VERBOSE);
 			Debug::log("meta: $meta",Debug::LOG_VERBOSE);
-//			$likes=(int)$xpath->evaluate('string(.//a[contains(@href,"/likes/post/")]/span)', $itemNode);
-//			$likes=$xpath->evaluate('./div[0]/div[0]/a[0]/span[0]', $itemNode)[0]->nodeValue;
-//			Debug::log("likes: $likes",Debug::LOG_VERBOSE);
-//			Debug::log("dddddddddddd:".$doc->saveHTML($likes),Debug::LOG_VERBOSE);
 
-//			if($likes&&$likes->length)$likes=$likes->item(0)->nodeValue;
-//			$replies=(int)$xpath->evaluate('string(.//div[@class="meta"]/span)', $itemNode);
 			$tmpHtml=$doc->saveHTML($itemNode);
 			$likes=0;
 			$replies=0;
@@ -147,7 +134,7 @@ class toutiao extends Plugin{
 			$rss .= "<item><title>" . htmlspecialchars($article['title']) .
 				"</title><link>" . htmlspecialchars($article['link']) .
 				"</link><guid>".htmlspecialchars($entry_guid)."</guid><author>" . htmlspecialchars($article['author']) .
-				"</author><description>".htmlspecialchars($article['content'])."</description>";
+				"</author><description>".htmlspecialchars($article['content']?:'')."</description>";
 
 			if($likes)$rss .= "<slash:comments>$likes</slash:comments>";
 			if(key_exists('tags', $article)){
@@ -161,27 +148,10 @@ class toutiao extends Plugin{
 
 			$rss .= "</item>";
 			if(!$oldArticle) ++$newArticleCount;
-			if((!extension_loaded('xdebug'))&&$newArticleCount>=5) break;
+//			if((!extension_loaded('xdebug'))&&$newArticleCount>=5) break;
 		}
 		$rss .= "</channel></rss>";
-		if($newArticleCount==0){
-//			$nextLink=false;
-//			$nextLinkNode = $xpath->query('(//a[@rel="prev"]/@href)[1]');
-//			if($nextLinkNode->length && $nextLinkNode[0]->value){
-//				$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
-//			}else{
-//				$nextLinkNode = $xpath->query('(//a[contains(text(),"末页")]/@href)[1]');
-//				if($nextLinkNode->length && $nextLinkNode[0]->value){
-//					$nextLink='https://toutiao.io' . $nextLinkNode[0]->value;
-//				}
-//			}
-//			if($nextLink){
-//				$sth_update_feedUrl = $this->pdo->prepare("update ttrss_feeds set feed_url= ? where id=?");
-//				$sth_update_feedUrl->execute([$nextLink, $feed]);
-//			}
-		}
 		return $rss;
-
 	}
 
 	function hook_article_filter($article) {
@@ -209,27 +179,16 @@ class toutiao extends Plugin{
 
 	protected function  parse_page(&$article,$c=0){
 		if($c>3) return true;
-		// hardcode: avoid some site for old ssl library
-//		if(OPENSSL_VERSION_NUMBER < 0x1000300f) {
-			switch ($article['meta']){
-				case 'blog.dteam.top':
-				case 'jianshu.com':
-				case 'hollischuang.com':
-					$article['content']='';
-					return true;
-			}
-//		}
 		$link=$article['link'];
-//		$cache_filename = Config::get(Config::CACHE_DIR) . "/feeds/toutiao-" . sha1($link) . ".xml";
-//		if(file_exists($cache_filename)){
-//			$html= file_get_contents($cache_filename);
-//		}else{
-//			$html=UrlHelper::fetch(["url" => $link,'followlocation'=>true]);
-//			if($html)file_put_contents($cache_filename, $html);
-//		}
-		$html=UrlHelperExt::fetch_cached(["url" => $link,'followlocation'=>true]);
+		$html=UrlHelperExt::fetch_cached(["url" => $link,'followlocation'=>'mp.weixin.qq.com'==$article['meta']]);
 
-		if(!$html) return false;
+		if(!$html) {
+			if(UrlHelper::$fetch_last_error_code>300 && UrlHelper::$fetch_last_error_code<400){
+				$article['link']=UrlHelper::$fetch_effective_url;
+				//非 頭條 微信 文章 ,不處理
+				return false;
+			}
+		}
 		$fetch_effective_url = UrlHelper::$fetch_effective_url;
 		$doc = new DOMDocument();
 		$doc->loadHTML('<?xml encoding="utf-8" ?>'.$html);
