@@ -1033,7 +1033,7 @@ class RSSUtils {
 							$last_read_qpart = date("Y-m-d H:i"); // we can't use NOW() here because it gets quoted
 						}
 
-						if (self::find_article_filter($article_filters, 'mark') || $score > 1000) {
+						if (self::find_article_filter($article_filters, 'mark')) {
 							$marked = 1;
 						} else {
 							$marked = 0;
