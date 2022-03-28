@@ -5,7 +5,7 @@
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => 'cd21d1c32a52b04d9d77b374381e66b5c3deed79',
+        'reference' => '4f0270bd44f743377c00527c143f7d7d83c6fba9',
         'name' => '__root__',
         'dev' => true,
     ),
@@ -16,7 +16,7 @@
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => 'cd21d1c32a52b04d9d77b374381e66b5c3deed79',
+            'reference' => '4f0270bd44f743377c00527c143f7d7d83c6fba9',
             'dev_requirement' => false,
         ),
         'beberlei/assert' => array(
@@ -389,12 +389,12 @@
             'dev_requirement' => true,
         ),
         'thecodingmachine/safe' => array(
-            'pretty_version' => 'v2.1.2',
-            'version' => '2.1.2.0',
+            'pretty_version' => 'v1.3.3',
+            'version' => '1.3.3.0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../thecodingmachine/safe',
             'aliases' => array(),
-            'reference' => 'e19610c7bb1f829bf0886f5a94a21924141212de',
+            'reference' => 'a8ab0876305a4cdaef31b2350fcb9811b5608dbc',
             'dev_requirement' => false,
         ),
         'theseer/tokenizer' => array(
