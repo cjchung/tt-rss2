@@ -780,7 +780,7 @@ class RSSUtils {
 				Debug::log("article hash: $entry_current_hash [stored=$entry_stored_hash]", Debug::LOG_VERBOSE);
 
 				if ($entry_current_hash == $entry_stored_hash && !isset($_REQUEST["force_rehash"])) {
-					Debug::log("stored article seems up to date [IID: $base_entry_id], updating timestamp only.", Debug::LOG_VERBOSE);
+//					Debug::log("stored article seems up to date [IID: $base_entry_id], updating timestamp only.", Debug::LOG_VERBOSE);
 
 					// we keep encountering the entry in feeds, so we need to
 					// update date_updated column so that we don't get horrible
@@ -789,10 +789,10 @@ class RSSUtils {
 
 					$pdo->commit();
 
-					$entry_obj = ORM::for_table('ttrss_entries')
-						->find_one($base_entry_id)
-						->set('date_updated', Db::NOW())
-						->save();
+//					$entry_obj = ORM::for_table('ttrss_entries')
+//						->find_one($base_entry_id)
+//						->set('date_updated', Db::NOW())
+//						->save();
 
 					continue;
 				}
