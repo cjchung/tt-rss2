@@ -592,7 +592,10 @@ class UrlHelper {
 					} else if ($key == 'location') {
 						self::$fetch_effective_url = $value;
 					} else if ($key == 'set-cookie') {
-//						if(!file_exists($cookie_file)) continue;
+						if(!file_exists($cookie_file)) {
+							touch($cookie_file.'.empty');
+							continue;
+						}
 						if(!$cookieJar){
 							$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
 							$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
