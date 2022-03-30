@@ -13,7 +13,7 @@ class UrlHelperExt {
 			$html=$a['html'];
 			UrlHelper::$fetch_effective_url=$a['fetch_effective_url'];
 			UrlHelper::$fetch_last_error_code=$a['fetch_last_error_code'];
-			Debug::log("UrlHelperExt: cached content replied $(options['url'])",Debug::LOG_VERBOSE);
+			Debug::log("UrlHelperExt: cached content replied ${options['url']}",Debug::LOG_VERBOSE);
 		}else{
 			$html=UrlHelper::fetch($options);
 			if($html){
