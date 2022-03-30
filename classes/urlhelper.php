@@ -506,13 +506,9 @@ class UrlHelper {
 						'header' => array(
 							'Connection: close',
 							'User-Agent: '.($useragent ?: Config::get_user_agent()),
-							'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
 							'Accept-Language: zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6'
 						),
 						'method' => 'GET',
-//						'ignore_errors' => true,
-//						'verify_peer' => false,
-//					    'verify_peer_name' => false,
 						'timeout' => $timeout ? $timeout : Config::get(Config::FILE_FETCH_TIMEOUT),
 						'follow_location' => $followlocation?1:0,
 						'protocol_version'=> 1.1
@@ -524,15 +520,19 @@ class UrlHelper {
 				  );
 
 			if (!$post_query && $last_modified)
-				array_push($context_options['http']['header'], "If-Modified-Since: $last_modified");
+				$context_options['http']['header'][] = "If-Modified-Since: $last_modified";
 
-			if ($http_accept)
-				array_push($context_options['http']['header'], "Accept: $http_accept");
+			if ($http_accept){
+				$context_options['http']['header'][] = "Accept: $http_accept";
+			}else{
+				$context_options['http']['header'][] = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
+			}
 
 			if ($http_referrer)
-				array_push($context_options['http']['header'], "Referer: $http_referrer");
+				$context_options['http']['header'][] = "Referer: $http_referrer";
 
-			if (Config::get(Config::HTTP_PROXY)) {
+			$byCFProxy=false;
+			if ($proxy=Config::get(Config::HTTP_PROXY)) {
 				$byProxy=true;
 				static $SKIP_PROXY_HOSTS= false;
 				if($SKIP_PROXY_HOSTS===false){
@@ -543,8 +543,16 @@ class UrlHelper {
 					$byProxy=strpos($SKIP_PROXY_HOSTS, $url_host)===false;
 				}
 				if($byProxy){
-					$context_options['http']['request_fulluri'] = true;
-					$context_options['http']['proxy'] = Config::get(Config::HTTP_PROXY);
+					if(substr_compare($proxy, 'cfp',0,3)===0){
+						$byCFProxy=true;
+					}
+					if($byCFProxy){
+						$context_options['http']['header'][] = "url: $url";
+						$context_options['http']['follow_location']=0;
+					}else{
+						$context_options['http']['request_fulluri'] = true;
+						$context_options['http']['proxy'] = $proxy;
+					}
 				}
 			}
 
@@ -567,23 +575,7 @@ class UrlHelper {
 
 			$old_error = error_get_last();
 
-//			self::$fetch_effective_url = self::resolve_redirects($url, $timeout ? $timeout : Config::get(Config::FILE_FETCH_CONNECT_TIMEOUT));
-//
-//			if (!self::validate(self::$fetch_effective_url, true)) {
-//				self::$fetch_last_error = "URL received after redirection failed extended validation.";
-//
-//				return false;
-//			}
-//
-//			self::$fetch_effective_ip_addr = gethostbyname(parse_url(self::$fetch_effective_url, PHP_URL_HOST));
-//
-//			if (!self::$fetch_effective_ip_addr || strpos(self::$fetch_effective_ip_addr, "127.") === 0) {
-//				self::$fetch_last_error = "URL hostname received after redirection failed to resolve or resolved to a loopback address (".self::$fetch_effective_ip_addr.")";
-//
-//				return false;
-//			}
-
-			$data = @file_get_contents($url, false, $context);
+			$data = @file_get_contents($byCFProxy?'https'.substr($proxy,3):$url, false, $context);
 
 			foreach ($http_response_header as $header) {
 				if (strstr($header, ": ") !== false) {
@@ -600,7 +592,7 @@ class UrlHelper {
 					} else if ($key == 'location') {
 						self::$fetch_effective_url = $value;
 					} else if ($key == 'set-cookie') {
-						if(!file_exists($cookie_file)) continue;
+//						if(!file_exists($cookie_file)) continue;
 						if(!$cookieJar){
 							$configuration = (new KeGi\NetscapeCookieFileHandler\Configuration\Configuration())->setCookieDir(dirname($cookie_file));
 							$cookieJar	= (new KeGi\NetscapeCookieFileHandler\CookieFileHandler($configuration))->parseFile(basename($cookie_file));
@@ -624,6 +616,14 @@ class UrlHelper {
 			}
 
 			if (self::$fetch_last_error_code != 200) {
+				if(self::$fetch_last_error_code>=300 && self::$fetch_last_error_code<400 && $byCFProxy && $followlocation){
+					$options_new = $options;
+					$options_new['url'] = self::$fetch_effective_url;
+					$keep=self::$fetch_effective_url;
+					$r= UrlHelper::fetch($options_new);
+					self::$fetch_effective_url=$keep;
+					return $r;
+				}
 				$error = error_get_last();
 
 				if (($error['message'] ?? '') != ($old_error['message'] ?? '')) {

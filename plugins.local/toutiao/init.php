@@ -134,7 +134,7 @@ class toutiao extends Plugin{
 			$rss .= "<item><title>" . htmlspecialchars($article['title']) .
 				"</title><link>" . htmlspecialchars($article['link']) .
 				"</link><guid>".htmlspecialchars($entry_guid)."</guid><author>" . htmlspecialchars($article['author']) .
-				"</author><description>".htmlspecialchars($article['content']?:'')."</description>";
+				"</author><description>".htmlspecialchars(key_exists('content',$article)?$article['content']:'')."</description>";
 
 			if($likes)$rss .= "<slash:comments>$likes</slash:comments>";
 			if(key_exists('tags', $article)){
