@@ -222,7 +222,9 @@ class toutiao extends Plugin{
 			foreach ($xpath->query('.//img', $contentNode) as $img){
 				$img->setAttribute('src', 'https://imageproxy.pimg.tw/resize?url='.$img->getAttribute('data-src'));
 			}
-			if(preg_match('/="(\d{4}-\d{2}-\d{2} \d{2}:\d{2})";/',$html,$m)){
+			if(preg_match('/"(\d+)",0,document\.getElementById\("publish_time"/',$html,$m)){
+				$article['pubDate'] = date(DATE_RFC2822, $m[1]);
+			}elseif(preg_match('/="(\d{4}-\d{2}-\d{2} \d{2}:\d{2})";/',$html,$m)){
 				$article['pubDate'] = date(DATE_RFC2822,(DateTime::createFromFormat('Y-m-d G:i',$m[1],self::$TZ))->getTimestamp());
 			}
 			foreach ($xpath->query('(//*[@class="article-tag__item"]|//*[@id="copyright_logo"])') as $tag){
