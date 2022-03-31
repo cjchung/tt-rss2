@@ -548,7 +548,7 @@ class UrlHelper {
 					}
 					if($byCFProxy){
 						$context_options['http']['header'][] = "url: $url";
-						$context_options['http']['follow_location']=0;
+//						$context_options['http']['follow_location']=0;
 					}else{
 						$context_options['http']['request_fulluri'] = true;
 						$context_options['http']['proxy'] = $proxy;

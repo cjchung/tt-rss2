@@ -196,7 +196,7 @@ class Af_Readability extends Plugin {
 	 */
 	public function extract_content(string $url) {
 
-		$tmp = UrlHelper::fetch([
+		$tmp = UrlHelperExt::fetch_cached([
 			"url" => $url,
 			"http_accept" => "text/*",
 			"type" => "text/html"]);
