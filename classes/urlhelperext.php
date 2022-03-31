@@ -16,7 +16,7 @@ class UrlHelperExt {
 			Debug::log("UrlHelperExt: cached content replied ${options['url']}",Debug::LOG_VERBOSE);
 		}else{
 			$html=UrlHelper::fetch($options);
-			if($html){
+			if($html||(UrlHelper::$fetch_last_error_code>=300 && UrlHelper::$fetch_last_error_code <400)){
 				file_put_contents($cache_filename, gzdeflate(serialize([
 					'html'=>$html,
 					'fetch_last_error_code'=>UrlHelper::$fetch_last_error_code,

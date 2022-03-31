@@ -6,6 +6,7 @@
  *
  */
 
+ini_set('max_execution_time','300');
   header('Content-Type: application/rss+xml; charset=utf-8');
   $timestamp = date('r', time());
   $counter = (int) file_get_contents(__DIR__."/updateweb.timestamp");

@@ -47,7 +47,7 @@ class toutiao extends Plugin{
 		$force_rehash = isset($_REQUEST["force_rehash"]);
 
 		$doc = new DOMDocument();
-		$sth_guid = $this->pdo->prepare("select * from  ttrss_entries where guid = ?");
+		$sth_guid = ORM::get_db()->prepare("select * from  ttrss_entries where guid = ?");
 //		$sth_author_title = $this->pdo->prepare("select * from  ttrss_entries where author= ? and title= ?");
 
 		$doc->loadHTML('<?xml encoding="utf-8" ?>'.$feed_data);
@@ -139,7 +139,7 @@ class toutiao extends Plugin{
 			if($likes)$rss .= "<slash:comments>$likes</slash:comments>";
 			if(key_exists('tags', $article)){
 				foreach ($article['tags'] as $tag){
-					$rss .= "<category>$tag</category>";
+					$rss .= "<category>".htmlspecialchars($tag)."</category>";
 				}
 			}
 			if(key_exists('pubDate', $article)){

@@ -622,10 +622,13 @@ class UrlHelper {
 				if(self::$fetch_last_error_code>=300 && self::$fetch_last_error_code<400 && $byCFProxy && $followlocation){
 					$options_new = $options;
 					$options_new['url'] = self::$fetch_effective_url;
-					$keep=self::$fetch_effective_url;
-					$r= UrlHelper::fetch($options_new);
-					self::$fetch_effective_url=$keep;
-					return $r;
+					$options_new['redirect_count']=($options['redirect_count']?:0) + 1;
+					if($options_new['redirect_count'] < 3){
+						$keep=self::$fetch_effective_url;
+						$r= UrlHelper::fetch($options_new);
+						self::$fetch_effective_url=$keep;
+						return $r;
+					}
 				}
 				$error = error_get_last();
 
