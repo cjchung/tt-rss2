@@ -517,7 +517,7 @@ class Feeds extends Handler_Protected {
 		set_pref(Prefs::_DEFAULT_VIEW_ORDER_BY, $order_by);
 
 		/* bump login timestamp if needed */
-		if (time() - $_SESSION["last_login_update"] > 3600) {
+		if (time() - ($_SESSION["last_login_update"]??0) > 3600) {
 			$user = ORM::for_table('ttrss_users')->find_one($_SESSION["uid"]);
 			$user->last_login = Db::NOW();
 			$user->save();

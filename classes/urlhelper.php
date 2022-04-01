@@ -548,7 +548,7 @@ class UrlHelper {
 					}
 					if($byCFProxy){
 						$context_options['http']['header'][] = "url: $url";
-//						$context_options['http']['follow_location']=0;
+						$context_options['http']['follow_location']=1;
 					}else{
 						$context_options['http']['request_fulluri'] = true;
 						$context_options['http']['proxy'] = $proxy;
@@ -622,7 +622,7 @@ class UrlHelper {
 				if(self::$fetch_last_error_code>=300 && self::$fetch_last_error_code<400 && $byCFProxy && $followlocation){
 					$options_new = $options;
 					$options_new['url'] = self::$fetch_effective_url;
-					$options_new['redirect_count']=($options['redirect_count']?:0) + 1;
+					$options_new['redirect_count']=($options['redirect_count'] ?? 0) + 1;
 					if($options_new['redirect_count'] < 3){
 						$keep=self::$fetch_effective_url;
 						$r= UrlHelper::fetch($options_new);

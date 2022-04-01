@@ -10,6 +10,7 @@ class UrlHelperExt {
 		$cache_filename = Config::get(Config::CACHE_DIR) . "/feeds/" . sha1(serialize($options)) . ".ser";
 		if(file_exists($cache_filename)&& ($cache_time<=0||filemtime($cache_filename)+$cache_time>time())){
 			$a= unserialize(gzinflate(file_get_contents($cache_filename)));
+			touch($cache_filename);
 			$html=$a['html'];
 			UrlHelper::$fetch_effective_url=$a['fetch_effective_url'];
 			UrlHelper::$fetch_last_error_code=$a['fetch_last_error_code'];
