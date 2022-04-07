@@ -542,6 +542,12 @@ class RSSUtils {
 		$rss = new FeedParser($feed_data);
 		$rss->init();
 
+		// fix invalid char (https://stackoverflow.com/questions/12229572/php-generated-xml-shows-invalid-char-value-27-message)
+		if($rss->error()&&strpos($rss->error(), 'invalid Char')){
+			$rss = new FeedParser(preg_replace ('/[^\x{0009}\x{000a}\x{000d}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]+/u', ' ', $feed_data));
+			$rss->init();
+		}
+
 		if (!$rss->error()) {
 
 			Debug::log("running HOOK_FEED_PARSED handlers...", Debug::LOG_VERBOSE);
