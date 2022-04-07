@@ -8,6 +8,10 @@ class Af_Readability extends Plugin {
 
 	/** @var PluginHost $host */
 	private $host;
+	/**
+	 * @var null
+	 */
+	private $_extra_article;
 
 	function about() {
 		return array(null,
@@ -199,7 +203,7 @@ class Af_Readability extends Plugin {
 		$tmp = UrlHelperExt::fetch_cached([
 			"url" => $url,
 			"http_accept" => "text/*",
-			"type" => "text/html"]);
+			"type" => "text/html"],3600);
 
 		if ($tmp && mb_strlen($tmp) < 1024 * 500) {
 			$tmpdoc = new DOMDocument("1.0", "UTF-8");
@@ -248,6 +252,11 @@ class Af_Readability extends Plugin {
 						}
 					}
 
+					// hardcode site rules
+//					if(stripos($url,'cnblogd')){  放棄，這個站竟然沒有用SSI把tag一次處裡完
+//						$tags = $tmpxpath->query('//div[@id,"BlogPostCategory"]/');
+//					}
+
 					return $r->getContent();
 				}
 
@@ -266,6 +275,7 @@ class Af_Readability extends Plugin {
 	 * @throws PDOException
 	 */
 	function process_article(array $article, bool $append_mode) : array {
+		$this->_extra_article=null;
 
 		$extracted_content = $this->extract_content($article["link"]);
 
@@ -279,6 +289,9 @@ class Af_Readability extends Plugin {
 				$article["content"] = $extracted_content;
 		}
 
+		if($this->_extra_article){
+			$article= array_merge_recursive([$article,$this->_extra_article]);
+		}
 		return $article;
 	}
 

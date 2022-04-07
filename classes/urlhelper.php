@@ -541,8 +541,10 @@ class UrlHelper {
 
 				if($SKIP_PROXY_HOSTS){
 					$byProxy=strpos($SKIP_PROXY_HOSTS, $url_host)===false;
+					if(!$byProxy) Debug::log("SKIP_PROXY_HOSTS!",Debug::LOG_EXTENDED);
 				}
 				if($byProxy){
+					touch(Config::get(Config::CACHE_DIR) . '/cookies/'.$url_host.".byproxy");
 					if(substr_compare($proxy, 'cfp',0,3)===0){
 						$byCFProxy=true;
 					}
@@ -575,7 +577,9 @@ class UrlHelper {
 
 			$old_error = error_get_last();
 
+			$t=hrtime(true);
 			$data = @file_get_contents($byCFProxy?'https'.substr($proxy,3):$url, false, $context);
+			Debug::log("[UrlHelp]time:".(hrtime(true)-$t),Debug::LOG_EXTENDED);
 
 			foreach ($http_response_header as $header) {
 				if (strstr($header, ": ") !== false) {
@@ -593,7 +597,6 @@ class UrlHelper {
 						self::$fetch_effective_url = $value;
 					} else if ($key == 'set-cookie') {
 						if(!file_exists($cookie_file)) {
-							touch($cookie_file.'.empty');
 							continue;
 						}
 						if(!$cookieJar){
