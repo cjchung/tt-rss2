@@ -34,16 +34,21 @@ class sis001 extends Plugin {
 
 		$force_rehash = isset($_REQUEST["force_rehash"]);
 
-		$argv = $_SERVER['argv'];
-		if($argv){
-			$key = array_search('--page', $argv);
-			if($key){
-				$page=$argv[$key+1];
-				if($page){
-					$fetch_url=preg_replace('/-\d+\.html/',"-$page.html", $fetch_url);
-					Debug::log('change page no='.$page);
+		$page=0;
+		if(PHP_SAPI=='cli'){
+			$argv = $_SERVER['argv']??false;
+			if($argv){
+				$key = array_search('--page', $argv);
+				if($key){
+					$page=$argv[$key+1];
 				}
 			}
+		}else{
+			$page=$_GET['page']??false;
+		}
+		if($page){
+			$fetch_url=preg_replace('/-\d+\.html/',"-$page.html", $fetch_url);
+			Debug::log('change page no='.$page);
 		}
 
 		$sth_guid = $this->pdo->prepare("select content from  ttrss_entries where guid = ?");
