@@ -518,3 +518,21 @@
 		return $ts;
 	}
 
+	function argument_parse($mix){
+		if(PHP_SAPI=='cli'){
+			$argv = $_SERVER['argv']??false;
+			if($argv){
+				foreach ($mix as $key){
+					$index = array_search("--$key", $argv);
+					if($index){
+						$mix[$key]=$argv[$index+1]??null;
+					}
+				}
+			}
+		}else{
+			foreach (array_keys($mix) as $key){
+				$mix[$key]=$_GET[$key]??null;
+			}
+		}
+		return $mix;
+	}

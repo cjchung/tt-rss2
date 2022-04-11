@@ -1,14 +1,8 @@
 <?php
 
 class sis001 extends Plugin {
-//	private $host;
-//	protected static $target_domain = 'sis001.com/';
-
-	private $curr_fid=0;
-	private $forumId=0;
 
 	function init($host) {
-//		$host->add_hook ( $host::HOOK_FEED_PARSED, $this );
 		$host->add_hook($host::HOOK_FETCH_FEED, $this);
 		$host->add_hook($host::HOOK_ARTICLE_FILTER, $this);
 
@@ -34,24 +28,14 @@ class sis001 extends Plugin {
 
 		$force_rehash = isset($_REQUEST["force_rehash"]);
 
-		$page=0;
-		if(PHP_SAPI=='cli'){
-			$argv = $_SERVER['argv']??false;
-			if($argv){
-				$key = array_search('--page', $argv);
-				if($key){
-					$page=$argv[$key+1];
-				}
-			}
-		}else{
-			$page=$_GET['page']??false;
-		}
+		$argument=argument_parse(['page']);
+		$page=$argument['page'];
 		if($page){
 			$fetch_url=preg_replace('/-\d+\.html/',"-$page.html", $fetch_url);
 			Debug::log('change page no='.$page);
 		}
 
-		$sth_guid = $this->pdo->prepare("select content from  ttrss_entries where guid = ?");
+		$sth_guid = $this->pdo->prepare("select content, author, num_comments from  ttrss_entries where guid = ?");
 
 		$feed_data=UrlHelper::fetch(["url" => $fetch_url,'followlocation'=>true]);
 
@@ -84,10 +68,6 @@ class sis001 extends Plugin {
 
 		$itemCount = 0;
 
-		if (preg_match('/forum-([0-9]+)-/', $fetch_url, $m)) {
-			$this->forumId = $m[1];
-		}
-
 		$rss_items=array();
 		foreach ($tbodies as $tbody) {
 			$thread_id=0;
@@ -98,42 +78,9 @@ class sis001 extends Plugin {
 			if(!$thread_id){
 				continue;
 			}
+			$url = "http://www.sis001.com/forum/thread-$thread_id-1-1.html" ;
 			$entry_guid = "sis001:$thread_id";
 			$entry_guid_hashed = json_encode(["ver" => 2, "uid" => $owner_uid, "hash" => 'SHA1:' . sha1($entry_guid)]);
-			$content=false;
-			if(!$force_rehash){
-				$sth_guid->execute([$entry_guid_hashed]);
-				if ($row = $sth_guid->fetch()) {
-					Debug::log("SKIP existing record...$entry_guid", Debug::LOG_VERBOSE);
-//					$content=$row['content'];
-					continue;
-				}
-			}
-
-
-
-			$url = "http://www.sis001.com/forum/thread-$thread_id-1-1.html" ;
-			if(!$content){
-				$content=UrlHelper::fetch(["url" => $url,'followlocation'=>true]);
-				$doc2 = new DOMDocument();
-				$doc2->loadHTML('<?xml encoding="utf8">' . $content);
-				$xpath2 = new DOMXPath($doc2);
-				$post = $xpath2->query('//div[@class="postmessage defaultpost"][1]/div[@class="t_msgfont"]/div')[0];
-//				$post = $xpath2->query('//div[contains(@class,"defaultpost")]')[0];
-				if($post){
-					$tb=$post->getElementsByTagName('table')[0];
-//					$font=$post->getElementsByTagName('font')[0];
-					try {
-						if ($tb) $post->removeChild($tb);
-//						if ($font) $post->removeChild($font);
-					} catch (Exception $e) {
-					}
-					$content=$doc2->saveHTML($post);
-					$content= preg_replace('/br>\r\n/','br>', $content);
-					$content= preg_replace('/>\s+</','><', $content);
-
-				}
-			}
 			$title = $a->nodeValue;
 
 			$post_type=null;
@@ -147,10 +94,8 @@ class sis001 extends Plugin {
 
 			$a=$xpath->query('.//td[@class="author"]/cite/a',$tbody)[0];
 			$author = $a->nodeValue;
-
 			$cite=$xpath->query('.//td[@class="author"]/cite',$tbody)[0];
 			$cite=trim($cite->nodeValue);
-
 			$thumbsUp=substr($cite,strlen($author));
 			if($thumbsUp){
 				$title .= str_repeat('👍', intdiv($thumbsUp,10));
@@ -160,8 +105,41 @@ class sis001 extends Plugin {
 			$a=$xpath->query('.//td[@class="author"]/em',$tbody)[0];
 			$pubDate = date('r', strtotime($a->nodeValue)-28800);
 
+			if(preg_match('/【作者：(.+)】$/u', $title, $m)){
+				$author=$m[1];
+			}
 
-//			$tags[] = [];
+			$content=false;
+			if(!$force_rehash){
+				$sth_guid->execute([$entry_guid_hashed]);
+				if ($row = $sth_guid->fetch()) {
+					$content=$row['content'];
+					if($row['num_comments']==$replies && $row['author']==$author){
+						Debug::log("SKIP existing/matching record...$title", Debug::LOG_VERBOSE);
+						continue;
+					}
+				}
+			}
+
+			if(!$content){
+				$content=UrlHelperExt::fetch_cached(["url" => $url,'followlocation'=>true]);
+				$doc2 = new DOMDocument();
+				$doc2->loadHTML('<?xml encoding="utf8">' . $content);
+				$xpath2 = new DOMXPath($doc2);
+				$post = $xpath2->query('//div[@class="postmessage defaultpost"][1]/div[@class="t_msgfont"]/div')[0];
+				if($post){
+					$tb=$post->getElementsByTagName('table')[0];
+					try {
+						if ($tb) $post->removeChild($tb);
+					} catch (Exception $e) {
+					}
+					$content=$doc2->saveHTML($post);
+					$content= preg_replace('/br>\r\n/','br>', $content);
+					$content= preg_replace('/>\s+</','><', $content);
+
+				}
+			}
+
 			$tags=null;
 			$gifs = $xpath->query('.//img', $tbody);
 			foreach ($gifs as $gif) {
@@ -181,7 +159,6 @@ class sis001 extends Plugin {
 				}
 			}
 
-
 			$rss_item =
 				"<item><title>" . htmlspecialchars($title) .
 				"</title><guid>".htmlspecialchars($entry_guid)."</guid><link>" . htmlspecialchars($url) .
@@ -191,11 +168,6 @@ class sis001 extends Plugin {
 			if($tags)foreach ($tags as $tag){
 				$rss_item = $rss_item ."<category>$tag</category>";
 			}
-//			$tags=twbbs::fix_twbbs_tag($title);
-//			if($tags)foreach ($tags as $tag){
-//				$rss_item = $rss_item ."<category>$tag</category>";
-//			}
-
 
 			if($post_type)$rss_item = $rss_item ."<category>$post_type</category>";
 			if(strpos($title,'合集')!==false) {
@@ -207,13 +179,11 @@ class sis001 extends Plugin {
 			$itemCount++;
 			$rss_items[$thread_id]=$rss_item;
 		}
-		ksort($rss_items);
+//		ksort($rss_items);
 		foreach ($rss_items as $v){
 			$rss = $rss . $v;
 		}
-		$rss = $rss . "</channel></rss>";
-
-		return $rss;
+		return $rss . "</channel></rss>";
 	}
 
 	function hook_article_filter($article) {
@@ -226,111 +196,4 @@ class sis001 extends Plugin {
 		}
 		return $article;
 	}
-
-//	protected function hook_feed_basic_info_filtered($basic_info, $fetch_url, $owner_uid, $feed, $auth_login, $auth_pass) {
-//		$contents = $this->fetch_file_contents([
-//			"url" => $fetch_url
-//		]);
-//
-//		$i = strpos($contents, '<title>', 0) + 7;
-//		$j = strpos($contents, '</title>', $i);
-//		$rssTitleText = substr($contents, $i, $j - $i - 11);
-//
-//		$basic_info['title'] = $rssTitleText;
-//		$basic_info['site_url'] = $fetch_url;
-//		return $basic_info;
-//	}
-
-//	protected function hook_article_filter($article) {
-//		$debug_enabled = defined('DAEMON_EXTENDED_DEBUG') || $_REQUEST['xdebug'];
-//
-//		$url= $article['link'];
-//		$thread_id=null;
-//		if(preg_match("/tid=([0-9]*)/", $url, $m)){
-//			$thread_id = $m[1];
-//		}
-//
-//		$retryCount = 3;
-//		$contents = '<div>Initial content</div>';
-//		while ($retryCount--) {
-//			$contents = $this->fetch_file_contents([
-//				"url" => $url
-//			]);
-//
-//			if (strpos($contents, $article['author'])) break;
-////			_debug("ERROR CONTENT ****:" . htmlspecialchars($contents, ENT_IGNORE), true);
-////			if(!$retryCount){
-////				echo "end of retry count. exit!\n";
-//////				exit(-1);
-////			}
-//			sleep(1);
-//		}
-//		$contents_to_cache = $contents;
-//
-//		$i = strpos($contents, '<body ');
-//		$j = strpos($contents, '</body>');
-//		if ($i) $contents = substr($contents, $i, $j - $i);
-//
-//		$contents = preg_replace('/ignore_js_op/', 'div', $contents);
-//
-//		$doc = new DOMDocument();
-//		$contents = '<?xml encoding="utf8">' . $contents;
-//		@$doc->loadHTML($contents);
-//		$xpath = new DOMXPath($doc);
-//		$download_count=0;
-//		$mainDiv = $xpath->query('//div[contains(@id, \'postmessage_\')]')[0];
-//		if ($mainDiv) {
-//			$tmp=$mainDiv->getElementsByTagName('div')[0];
-//			if($tmp)$mainDiv=$tmp;
-////			$firstChile=$mainDiv->childNodes->item(0);
-////			if($firstChile->tagName==='strong'){
-////				// forum mod modified
-////				$delete_flag=true;
-////				$nl=$mainDiv->childNodes;
-////				for ($i=0;$i< $nl->length;$i++){
-////					$n=$nl->item($i);
-////					if($n->tagName==='strong'){
-////						$delete_flag=true;
-////					}
-////					if($delete_flag){
-////						$mainDiv->removeChild($n);
-////						if($n->tagName==='table'){
-////							$delete_flag=false;
-////						}
-////					}
-////				}
-////			}
-//
-////			foreach ($xpath->query('//*/text()') as $a){
-////				if(!str_replace(array("\r\n", "\n", "\r","\t"," "), "", $a->nodeValue))
-////					$a->parentNode->removeChild($a);
-////			}
-//
-//			$contents = $doc->saveHTML($mainDiv);
-//		}
-//
-//		if($this->forumId==383 || $this->forumId==322 || $this->forumId==391 || $this->forumId==390){
-//			$contents = preg_replace('/[\s\S]*<\/table>/','',$contents);
-//			$contents = preg_replace('/<strong>[\s\S]*/','',$contents);
-//
-//		}
-//		$contents = preg_replace('/.*本帖最后由[\s\S]*/','',$contents);
-//
-//
-//		$contents = str_replace("&nbsp;","",$contents);
-//		$i=mb_stripos($contents,"\xE3\xC2\x82");
-//		if($i!==false){
-//			$contents = iconv("UTF-8","UTF-8//IGNORE",$contents);
-//		}
-//
-////		$contents=mb_ereg_replace("\xE3\xC2\x82","",$contents);
-////		$contents = str_replace("\xc2\xa0","",$contents);
-//
-//		$article['content'] = $contents;
-//
-////		if($contents_to_cache) file_put_contents($cache_file, $contents_to_cache);
-//		return $article;
-//	}
-
 }
-?>
