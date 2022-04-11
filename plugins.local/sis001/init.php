@@ -28,11 +28,16 @@ class sis001 extends Plugin {
 
 		$force_rehash = isset($_REQUEST["force_rehash"]);
 
-		$argument=argument_parse(['page']);
-		$page=$argument['page'];
+		$argument=argument_parse(['page','fetch_url']);
+		$page=$argument['page']??null;
+		$fetch_url=$argument['fetch_url']??$fetch_url;
 		if($page){
-			$fetch_url=preg_replace('/-\d+\.html/',"-$page.html", $fetch_url);
-			Debug::log('change page no='.$page);
+			if(strpos($fetch_url,'page=')){
+				$fetch_url=preg_replace('/page=\d+/',"page=$page", $fetch_url);
+			}else{
+				$fetch_url=preg_replace('/-\d+\.html/',"-$page.html", $fetch_url);
+			}
+			Debug::log('change $fetch_url='.$fetch_url);
 		}
 
 		$sth_guid = $this->pdo->prepare("select content, author, num_comments from  ttrss_entries where guid = ?");
@@ -71,8 +76,10 @@ class sis001 extends Plugin {
 		$rss_items=array();
 		foreach ($tbodies as $tbody) {
 			$thread_id=0;
-			$a=$xpath->query('.//a[starts-with(@href, \'thread-\')]',$tbody)[1];
+			$a=$xpath->query('(.//a[starts-with(@href, \'thread-\')] | .//a[starts-with(@href, \'viewthread.php?tid=\')])',$tbody)[1];
 			if(preg_match("/thread-([0-9]*)-/", $a->getAttribute('href'), $m)){
+				$thread_id = $m[1];
+			}elseif(preg_match("/tid=([0-9]*)&/", $a->getAttribute('href'), $m)){
 				$thread_id = $m[1];
 			}
 			if(!$thread_id){
