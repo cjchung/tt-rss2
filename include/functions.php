@@ -530,8 +530,8 @@
 				}
 			}
 		}else{
-			foreach (array_keys($mix) as $key){
-				$mix[$key]=$_GET[$key]??null;
+			foreach ($mix as $key){
+				$mix[$key]=$_GET[$key]??$_POST[$key]??null;
 			}
 		}
 		return $mix;

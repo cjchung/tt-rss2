@@ -42,7 +42,7 @@ class sis001 extends Plugin {
 
 		$sth_guid = $this->pdo->prepare("select content, author, num_comments from  ttrss_entries where guid = ?");
 
-		$feed_data=UrlHelper::fetch(["url" => $fetch_url,'followlocation'=>true]);
+		$feed_data=UrlHelper::fetch(["url" => $fetch_url,'followlocation'=>true, 'http_referrer'=>$fetch_url]);
 
 		$i = strpos($feed_data, '<title>');
 		if(!$i){
@@ -89,6 +89,7 @@ class sis001 extends Plugin {
 			$entry_guid = "sis001:$thread_id";
 			$entry_guid_hashed = json_encode(["ver" => 2, "uid" => $owner_uid, "hash" => 'SHA1:' . sha1($entry_guid)]);
 			$title = $a->nodeValue;
+			Debug::log("title: $title", Debug::LOG_EXTENDED);
 
 			$post_type=null;
 			$a=$xpath->query('.//a[starts-with(@href, \'forumdisplay.php?fid\')]',$tbody)[0];
@@ -99,16 +100,16 @@ class sis001 extends Plugin {
 				}
 			}
 
-			$a=$xpath->query('.//td[@class="author"]/cite/a',$tbody)[0];
-			$author = $a->nodeValue;
-			$cite=$xpath->query('.//td[@class="author"]/cite',$tbody)[0];
-			$cite=trim($cite->nodeValue);
-			$thumbsUp=substr($cite,strlen($author));
-			if($thumbsUp){
-				$title .= str_repeat('👍', intdiv($thumbsUp,10));
+			$a = $xpath->query('.//td[@class="author"]/cite/a', $tbody)[0];
+			$author = $a?$a->nodeValue:'匿名';
+			$cite = $xpath->query('.//td[@class="author"]/cite', $tbody)[0];
+			$cite = trim($cite->nodeValue);
+			$thumbsUp = substr($cite, strlen($author));
+			if ($thumbsUp) {
+				$title .= str_repeat('👍', intdiv($thumbsUp, 10));
 			}
 			$replies=$xpath->query('.//td[@class="nums"]/strong',$tbody)[0]->nodeValue;
-			$replies += $thumbsUp;
+			$replies += $thumbsUp?:0;
 			$a=$xpath->query('.//td[@class="author"]/em',$tbody)[0];
 			$pubDate = date('r', strtotime($a->nodeValue)-28800);
 
@@ -129,7 +130,7 @@ class sis001 extends Plugin {
 			}
 
 			if(!$content){
-				$content=UrlHelperExt::fetch_cached(["url" => $url,'followlocation'=>true]);
+				$content=UrlHelperExt::fetch_cached(["url" => $url,'followlocation'=>true, 'http_referrer'=>$fetch_url]);
 				$doc2 = new DOMDocument();
 				$doc2->loadHTML('<?xml encoding="utf8">' . $content);
 				$xpath2 = new DOMXPath($doc2);
