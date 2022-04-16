@@ -141,10 +141,14 @@ class sis001 extends Plugin {
 						if ($tb) $post->removeChild($tb);
 					} catch (Exception $e) {
 					}
+					foreach($xpath2->query('.//div[@style]', $post) as $div){
+						$div->removeAttribute('style');
+					}
 					$content=$doc2->saveHTML($post);
+					$content= preg_replace('/<font[^>]+>/','', $content);
+					$content= preg_replace('/<\/font>/','', $content);
 					$content= preg_replace('/br>\r\n/','br>', $content);
 					$content= preg_replace('/>\s+</','><', $content);
-
 				}
 			}
 
