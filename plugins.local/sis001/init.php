@@ -26,7 +26,6 @@ class sis001 extends Plugin {
 			return $feed_data;
 		}
 
-		$force_rehash = isset($_REQUEST["force_rehash"]);
 
 		$argument=argument_parse(['page','fetch_url']);
 		$page=$argument['page']??null;
@@ -39,6 +38,7 @@ class sis001 extends Plugin {
 			}
 			Debug::log('change $fetch_url='.$fetch_url);
 		}
+		$force_rehash = $argument["force-rehash"];
 
 		$sth_guid = $this->pdo->prepare("select content, author, num_comments from  ttrss_entries where guid = ?");
 
@@ -104,7 +104,11 @@ class sis001 extends Plugin {
 			$author = $a?$a->nodeValue:'匿名';
 			$cite = $xpath->query('.//td[@class="author"]/cite', $tbody)[0];
 			$cite = trim($cite->nodeValue);
+			//thumbsUp, author, title 解析順序不能亂
 			$thumbsUp = substr($cite, strlen($author));
+			if(preg_match('/【作者：(.+)】$/u', $title, $m)){
+				$author=$m[1];
+			}
 			if ($thumbsUp) {
 				$title .= str_repeat('👍', intdiv($thumbsUp, 10));
 			}
@@ -113,9 +117,6 @@ class sis001 extends Plugin {
 			$a=$xpath->query('.//td[@class="author"]/em',$tbody)[0];
 			$pubDate = date('r', strtotime($a->nodeValue)-28800);
 
-			if(preg_match('/【作者：(.+)】$/u', $title, $m)){
-				$author=$m[1];
-			}
 
 			$content=false;
 			if(!$force_rehash){

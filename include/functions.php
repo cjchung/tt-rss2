@@ -518,7 +518,12 @@
 		return $ts;
 	}
 
-	function argument_parse($mix){
+	/**
+	 * parse argument/parameter from command line or query string, force-rehash and force-refetch are always checked.
+	 * @param array<string> $mix
+	 * @retrun array<string, string> $mix
+    */
+	function argument_parse(array $mix): array {
 		if(PHP_SAPI=='cli'){
 			$argv = $_SERVER['argv']??false;
 			if($argv){
@@ -528,6 +533,8 @@
 						$mix[$key]=$argv[$index+1]??null;
 					}
 				}
+				if(array_search("--force-rehash", $argv))$mix['force-rehash']=true;
+				if(array_search("--force-refetch", $argv))$mix['force-refetch']=true;
 			}
 		}else{
 			foreach ($mix as $key){
