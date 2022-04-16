@@ -38,7 +38,7 @@ class sis001 extends Plugin {
 			}
 			Debug::log('change $fetch_url='.$fetch_url);
 		}
-		$force_rehash = $argument["force-rehash"];
+		$force_rehash = $argument["force-rehash"]??false;
 
 		$sth_guid = $this->pdo->prepare("select content, author, num_comments from  ttrss_entries where guid = ?");
 
@@ -106,7 +106,7 @@ class sis001 extends Plugin {
 			$cite = trim($cite->nodeValue);
 			//thumbsUp, author, title 解析順序不能亂
 			$thumbsUp = substr($cite, strlen($author));
-			if(preg_match('/【作者：(.+)】$/u', $title, $m)){
+			if(preg_match('/【作者[：:](.+)】$/u', $title, $m)){
 				$author=$m[1];
 			}
 			if ($thumbsUp) {
