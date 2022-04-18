@@ -621,8 +621,16 @@ class UrlHelper {
 				}
 			}
 
+			if(Debug::get_loglevel()>=Debug::LOG_EXTENDED){
+				$msg='';
+				foreach ($http_response_header as $header) {
+					$msg.=$header.PHP_EOL;
+				}
+				Debug::log("http_response_header=".$msg.",\ndata length: ".strlen($data),Debug::LOG_EXTENDED);
+			}
+
 			if (self::$fetch_last_error_code != 200) {
-				if(self::$fetch_last_error_code>=300 && self::$fetch_last_error_code<400 && $byCFProxy && $followlocation){
+				if(self::$fetch_last_error_code>=300 && self::$fetch_last_error_code<304 && $byCFProxy && $followlocation){
 					$options_new = $options;
 					$options_new['url'] = self::$fetch_effective_url;
 					$options_new['redirect_count']=($options['redirect_count'] ?? 0) + 1;
