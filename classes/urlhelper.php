@@ -342,12 +342,24 @@ class UrlHelper {
 		if (function_exists('curl_init') && !ini_get("open_basedir")) {
 
 			self::$fetch_curl_used = true;
+			static $reused_ch=false;
 
-			$ch = curl_init($url);
+			if($reused_ch){
+				$ch = $reused_ch;
+				curl_setopt($ch, CURLOPT_URL, $url);
+				$reused_ch=false;
+			}else{
+				$ch = curl_init($url);
+			}
 
 			if (!$ch) return false;
 
 			$curl_http_headers = [];
+			$con_reuse=getenv('CONREUSE');
+			if($con_reuse){
+				curl_setopt($ch, CURLOPT_FORBID_REUSE , false);
+				$curl_http_headers[] = "Connection: Keep-Alive";
+			}
 
 			if ($last_modified && !$post_query)
 				array_push($curl_http_headers, "If-Modified-Since: $last_modified");
@@ -419,6 +431,10 @@ class UrlHelper {
 					if (strtolower($key) == "last-modified") {
 						self::$fetch_last_modified = $value;
 					}
+
+					if($key=='Connection' && $value=='Keep-Alive'){
+						$reused_ch=$ch;
+					}
 				}
 
 				if (substr(strtolower($header), 0, 7) == 'http/1.') {
@@ -472,7 +488,9 @@ class UrlHelper {
 				return false;
 			}
 
-			curl_close($ch);
+			if(!$reused_ch){
+				curl_close($ch);
+			}
 
 			$is_gzipped = RSSUtils::is_gzipped($contents);
 
