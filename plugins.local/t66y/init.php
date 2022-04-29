@@ -197,10 +197,10 @@ class t66y extends Plugin {
 				}
 
 				$trFullText = $doc->saveHTML($tr);
+				$c=false;
 				if ($tdTitle->firstChild->nodeType == XML_TEXT_NODE) {
 					$c = $tdTitle->firstChild->nodeValue;
 					$c = preg_replace('/[\s\[\]]/', '', $c);
-					$rss = $rss . "<category>" . htmlspecialchars($c) . "</category>";
 					$title="[$c]$title";
 				};
 				$rss = $rss .
@@ -209,6 +209,7 @@ class t66y extends Plugin {
 					"</link><author>" . htmlspecialchars($author) .
 					"</author><slash:comments>$commentCount</slash:comments><pubDate>$pubDate</pubDate>";
 				$rss .= "<description>".htmlspecialchars($content)."</description>";
+				if($c)$rss = $rss . "<category>" . htmlspecialchars($c) . "</category>";
 				if (strpos($trFullText, ">熱<") !== false) {
 					$rss = $rss . "<category>熱門帖</category>";
 				}
