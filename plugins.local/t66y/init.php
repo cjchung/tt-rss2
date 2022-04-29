@@ -93,6 +93,7 @@ class t66y extends Plugin {
 			Debug::log('change $fetch_url='.$fetch_url);
 		}
 		$force_rehash = $argument["force-rehash"]??false;
+		Debug::log("force_rehash=$force_rehash",Debug::LOG_EXTENDED);
 
 		$sth_guid = $this->pdo->prepare("select content, num_comments from  ttrss_entries where guid = ?");
 
@@ -126,6 +127,7 @@ class t66y extends Plugin {
 
 				$a = $tdTitle->getElementsByTagName('h3')->item(0)->getElementsByTagName('a')->item(0);
 				$title = $a->nodeValue;
+				Debug::log("title=$title",Debug::LOG_EXTENDED);
 				$url = 'http://www.t66y.com/' . $a->getAttribute('href');
 				if (strpos($url, '?') !== false) continue;
 				$thread_id=0;
@@ -205,7 +207,7 @@ class t66y extends Plugin {
 				};
 				$rss = $rss .
 					"<item><title>" . htmlspecialchars($title) .
-					"</title><link>" . htmlspecialchars($url) .
+					"</title><guid>".htmlspecialchars($entry_guid)."</guid><link>" . htmlspecialchars($url) .
 					"</link><author>" . htmlspecialchars($author) .
 					"</author><slash:comments>$commentCount</slash:comments><pubDate>$pubDate</pubDate>";
 				$rss .= "<description>".htmlspecialchars($content)."</description>";
