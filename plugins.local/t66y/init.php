@@ -159,7 +159,7 @@ class t66y extends Plugin {
 					$doc2 = new DOMDocument();
 					$doc2->loadHTML('<?xml encoding="utf8">' . $content);
 					$xpath2 = new DOMXPath($doc2);
-					$post = $xpath2->query('//div[@id="conttpc"]')[0];
+					$post = $xpath2->query('//div[@class="tpc_content do_not_catch"]')[0];
 					if($post){
 //						$tb=$post->getElementsByTagName('table')[0];
 //						try {
