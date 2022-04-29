@@ -1,6 +1,11 @@
 <?php
 class UrlHelperExt {
 
+	public static function remove_cached($options) {
+		$cache_filename = Config::get(Config::CACHE_DIR) . "/feeds/" . sha1(serialize($options)) . ".ser";
+		unlink($cache_filename);
+	}
+
 	/**
 	 * @param array<string, bool|int|string>|string $options
 	 * @return false|string false if something went wrong, otherwise string contents
