@@ -203,7 +203,7 @@ class t66y extends Plugin {
 				if ($tdTitle->firstChild->nodeType == XML_TEXT_NODE) {
 					$c = $tdTitle->firstChild->nodeValue;
 					$c = preg_replace('/[\s\[\]]/', '', $c);
-					$title="[$c]$title";
+					if($c)$title="[$c]$title";
 				};
 				$rss = $rss .
 					"<item><title>" . htmlspecialchars($title) .
