@@ -397,7 +397,8 @@ class RSSUtils {
 
 		$rss_hash = false;
 
-		$force_refetch = isset($_REQUEST["force_refetch"]);
+		$alter_feed_url=$_REQUEST["alter_feed_url"]??false;
+		$force_refetch = isset($_REQUEST["force_refetch"])||$alter_feed_url;
 		$feed_data = "";
 
 		Debug::log("running HOOK_FETCH_FEED handlers...", Debug::LOG_VERBOSE);
@@ -455,10 +456,14 @@ class RSSUtils {
 				Debug::log("stored last modified for conditional request: {$feed_obj->last_modified}", Debug::LOG_VERBOSE);
 			}
 
-			Debug::log("fetching {$feed_obj->feed_url} (force_refetch: $force_refetch)...", Debug::LOG_VERBOSE);
+			if($alter_feed_url){
+				Debug::log("fetching {$alter_feed_url} (force_refetch: $force_refetch)...", Debug::LOG_VERBOSE);
+			}else{
+				Debug::log("fetching {$feed_obj->feed_url} (force_refetch: $force_refetch)...", Debug::LOG_VERBOSE);
+			}
 
 			$feed_data = UrlHelper::fetch([
-				"url" => $feed_obj->feed_url,
+				"url" => $alter_feed_url?:$feed_obj->feed_url,
 				"login" => $feed_obj->auth_login,
 				"pass" => $feed_obj->auth_pass,
 				"timeout" => $no_cache ? Config::get(Config::FEED_FETCH_NO_CACHE_TIMEOUT) : Config::get(Config::FEED_FETCH_TIMEOUT),
