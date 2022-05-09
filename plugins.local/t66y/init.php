@@ -286,7 +286,7 @@ class t66y extends Plugin {
 
 		}
 
-		if($itemCount==0&&(!$argument['fetch_url'])){
+		if($itemCount==0&&(!key_exists('fetch_url', $argument))){
 			if(preg_match('/page=(\d+)$/', $fetch_url, $m)){
 				$p=(int)$m[1];
 				if($p>1){
