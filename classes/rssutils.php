@@ -398,6 +398,9 @@ class RSSUtils {
 		$rss_hash = false;
 
 		$alter_feed_url=$_REQUEST["alter_feed_url"]??false;
+		if($alter_feed_url){
+			$cache_filename = Config::get(Config::CACHE_DIR) . "/feeds/" . sha1($alter_feed_url) . ".xml";
+		}
 		$force_refetch = isset($_REQUEST["force_refetch"])||$alter_feed_url;
 		$feed_data = "";
 
