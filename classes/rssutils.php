@@ -501,7 +501,7 @@ class RSSUtils {
 
 			// If-Modified-Since
 			if (UrlHelper::$fetch_last_error_code == 304) {
-				Debug::log("source claims data not modified, nothing to do.", Debug::LOG_VERBOSE);
+				Debug::log("source claims data not modified (304), nothing to do.", Debug::LOG_VERBOSE);
 				$error_message = "";
 
 				$feed_obj->set([
@@ -512,6 +512,24 @@ class RSSUtils {
 
 				$feed_obj->save();
 
+			} else if (UrlHelper::$fetch_last_error_code == 429) {
+
+				// randomize interval using Config::HTTP_429_THROTTLE_INTERVAL as a base value (1-2x)
+				$http_429_throttle_interval = rand(Config::get(Config::HTTP_429_THROTTLE_INTERVAL),
+					Config::get(Config::HTTP_429_THROTTLE_INTERVAL)*2);
+
+				$error_message = UrlHelper::$fetch_last_error;
+
+				Debug::log("source claims we're requesting too often (429), throttling updates for $http_429_throttle_interval seconds.",
+					Debug::LOG_VERBOSE);
+
+				$feed_obj->set([
+					'last_error' => $error_message . " (updates throttled for $http_429_throttle_interval seconds.)",
+					'last_successful_update' => Db::NOW($http_429_throttle_interval),
+					'last_updated' => Db::NOW($http_429_throttle_interval),
+				]);
+
+				$feed_obj->save();
 			} else {
 				$error_message = UrlHelper::$fetch_last_error;
 
@@ -572,9 +590,14 @@ class RSSUtils {
 			Debug::log("language: $feed_language", Debug::LOG_VERBOSE);
 			Debug::log("processing feed data...", Debug::LOG_VERBOSE);
 
-			$site_url = mb_substr(UrlHelper::rewrite_relative($feed_obj->feed_url, clean($rss->get_link())), 0, 245);
+			// this is a fallback, in case RSSUtils::update_basic_info() fails.
+			// TODO: is this necessary? remove unless it is.
+			if (empty($feed_obj->site_url)) {
+				$feed_obj->site_url = mb_substr(UrlHelper::rewrite_relative($feed_obj->feed_url, clean($rss->get_link())), 0, 245);
+				$feed_obj->save();
+			}
 
-			Debug::log("site_url: $site_url", Debug::LOG_VERBOSE);
+			Debug::log("site_url: {$feed_obj->site_url}", Debug::LOG_VERBOSE);
 			Debug::log("feed_title: {$rss->get_title()}", Debug::LOG_VERBOSE);
 
 			Debug::log("favicon: needs check: {$feed_obj->favicon_needs_check} is custom: {$feed_obj->favicon_is_custom} avg color: {$feed_obj->favicon_avg_color}",
@@ -590,7 +613,7 @@ class RSSUtils {
 
 				if (!$feed_obj->favicon_is_custom) {
 					Debug::log("favicon: trying to update favicon...", Debug::LOG_VERBOSE);
-					self::update_favicon($site_url, $feed);
+					self::update_favicon($feed_obj->site_url, $feed);
 
 					if ((file_exists($favicon_file) ? filemtime($favicon_file) : -1) > $favicon_modified)
 						$feed_obj->favicon_avg_color = null;
@@ -682,7 +705,7 @@ class RSSUtils {
 
 				$entry_title = strip_tags($item->get_title());
 
-				$entry_link = UrlHelper::rewrite_relative($site_url, clean($item->get_link()), "a", "href");
+				$entry_link = UrlHelper::rewrite_relative($feed_obj->site_url, clean($item->get_link()), "a", "href");
 
 				$entry_language = mb_substr(trim($item->get_language()), 0, 2);
 
@@ -751,7 +774,7 @@ class RSSUtils {
 
 						// TODO: Just use FeedEnclosure (and modify it to cover whatever justified this)?
 						$e_item = array(
-							UrlHelper::rewrite_relative($site_url, $e->link, "", "", $e->type),
+							UrlHelper::rewrite_relative($feed_obj->site_url, $e->link, "", "", $e->type),
 							$e->type, $e->length, $e->title, $e->width, $e->height);
 
 						// Yet another episode of "mysql utf8_general_ci is gimped"
@@ -784,7 +807,7 @@ class RSSUtils {
 					"enclosures" => $enclosures,
 					"feed" => array("id" => $feed,
 						"fetch_url" => $feed_obj->feed_url,
-						"site_url" => $site_url,
+						"site_url" => $feed_obj->site_url,
 						"cache_images" => $feed_obj->cache_images)
 				);
 
@@ -952,7 +975,7 @@ class RSSUtils {
 				Debug::log("force catchup: $entry_force_catchup", Debug::LOG_VERBOSE);
 
 				if ($feed_obj->cache_images)
-					self::cache_media($entry_content, $site_url);
+					self::cache_media($entry_content, $feed_obj->site_url);
 
 				$csth = $pdo->prepare("SELECT id FROM ttrss_entries
 					WHERE guid IN (?, ?, ?)");
@@ -1150,7 +1173,7 @@ class RSSUtils {
 					$feed_obj->owner_uid, $article_labels);
 
 				if ($feed_obj->cache_images)
-					self::cache_enclosures($enclosures, $site_url);
+					self::cache_enclosures($enclosures, $feed_obj->site_url);
 
 				if (Debug::get_loglevel() >= Debug::LOG_EXTENDED) {
 					Debug::log("article enclosures:", Debug::LOG_VERBOSE);
@@ -1688,65 +1711,79 @@ class RSSUtils {
 	static function update_favicon(string $site_url, int $feed) {
 		$icon_file = Config::get(Config::ICONS_DIR) . "/$feed.ico";
 
-		$favicon_url = self::get_favicon_url($site_url);
-		if (!$favicon_url) {
-			Debug::log("favicon: couldn't find favicon URL in $site_url", Debug::LOG_VERBOSE);
+		$favicon_urls = self::get_favicon_urls($site_url);
+
+		if (count($favicon_urls) == 0) {
+			Debug::log("favicon: couldn't find any favicon URLs for $site_url", Debug::LOG_VERBOSE);
 			return false;
 		}
 
-		// Limiting to "image" type misses those served with text/plain
-		$contents = UrlHelper::fetch([
-			'url' => $favicon_url,
-			'max_size' => Config::get(Config::MAX_FAVICON_FILE_SIZE),
-			//'type' => 'image',
-		]);
-		if (!$contents) {
-			Debug::log("favicon: fetching $favicon_url failed", Debug::LOG_VERBOSE);
-			return false;
+		// i guess we'll have to go through all of them until something looks valid...
+		foreach ($favicon_urls as $favicon_url) {
+
+			// Limiting to "image" type misses those served with text/plain
+			$contents = UrlHelper::fetch([
+				'url' => $favicon_url,
+				'max_size' => Config::get(Config::MAX_FAVICON_FILE_SIZE),
+				//'type' => 'image',
+			]);
+
+			if (!$contents) {
+				Debug::log("favicon: fetching $favicon_url failed, skipping...", Debug::LOG_VERBOSE);
+				break;
+			}
+
+			// TODO: we could use mime_conent_type() here instead of below hacks but we'll need to
+			// save every favicon to disk and go from there.
+			// also, if SVG is allowed in the future, we'll need to specifically forbid 'image/svg+xml'.
+
+			// Crude image type matching.
+			// Patterns gleaned from the file(1) source code.
+			if (preg_match('/^\x00\x00\x01\x00/', $contents)) {
+				// 0       string  \000\000\001\000        MS Windows icon resource
+				//error_log("update_favicon: favicon_url=$favicon_url isa MS Windows icon resource");
+			}
+			elseif (preg_match('/^GIF8/', $contents)) {
+				// 0       string          GIF8            GIF image data
+				//error_log("update_favicon: favicon_url=$favicon_url isa GIF image");
+			}
+			elseif (preg_match('/^\x89PNG\x0d\x0a\x1a\x0a/', $contents)) {
+				// 0       string          \x89PNG\x0d\x0a\x1a\x0a         PNG image data
+				//error_log("update_favicon: favicon_url=$favicon_url isa PNG image");
+			}
+			elseif (preg_match('/^\xff\xd8/', $contents)) {
+				// 0       beshort         0xffd8          JPEG image data
+				//error_log("update_favicon: favicon_url=$favicon_url isa JPG image");
+			}
+			elseif (preg_match('/^BM/', $contents)) {
+				// 0	string		BM	PC bitmap (OS2, Windows BMP files)
+				//error_log("update_favicon, favicon_url=$favicon_url isa BMP image");
+			}
+			else {
+				//error_log("update_favicon: favicon_url=$favicon_url isa UNKNOWN type");
+				Debug::log("favicon $favicon_url type is unknown, skipping...", Debug::LOG_VERBOSE);
+				break;
+			}
+
+			Debug::log("favicon: $favicon_url looks valid, saving to $icon_file", Debug::LOG_VERBOSE);
+
+			$fp = @fopen($icon_file, "w");
+
+			if ($fp) {
+
+				fwrite($fp, $contents);
+				fclose($fp);
+				chmod($icon_file, 0644);
+				clearstatcache();
+
+				return $icon_file;
+
+			} else {
+				Debug::log("favicon: failed to open $icon_file for writing", Debug::LOG_VERBOSE);
+			}
 		}
 
-		// Crude image type matching.
-		// Patterns gleaned from the file(1) source code.
-		if (preg_match('/^\x00\x00\x01\x00/', $contents)) {
-			// 0       string  \000\000\001\000        MS Windows icon resource
-			//error_log("update_favicon: favicon_url=$favicon_url isa MS Windows icon resource");
-		}
-		elseif (preg_match('/^GIF8/', $contents)) {
-			// 0       string          GIF8            GIF image data
-			//error_log("update_favicon: favicon_url=$favicon_url isa GIF image");
-		}
-		elseif (preg_match('/^\x89PNG\x0d\x0a\x1a\x0a/', $contents)) {
-			// 0       string          \x89PNG\x0d\x0a\x1a\x0a         PNG image data
-			//error_log("update_favicon: favicon_url=$favicon_url isa PNG image");
-		}
-		elseif (preg_match('/^\xff\xd8/', $contents)) {
-			// 0       beshort         0xffd8          JPEG image data
-			//error_log("update_favicon: favicon_url=$favicon_url isa JPG image");
-		}
-		elseif (preg_match('/^BM/', $contents)) {
-			// 0	string		BM	PC bitmap (OS2, Windows BMP files)
-			//error_log("update_favicon, favicon_url=$favicon_url isa BMP image");
-		}
-		else {
-			//error_log("update_favicon: favicon_url=$favicon_url isa UNKNOWN type");
-			Debug::log("favicon $favicon_url type is unknown (not updating)", Debug::LOG_VERBOSE);
-			return false;
-		}
-
-		Debug::log("favicon: saving to $icon_file", Debug::LOG_VERBOSE);
-
-		$fp = @fopen($icon_file, "w");
-		if (!$fp) {
-			Debug::log("favicon: failed to open $icon_file for writing", Debug::LOG_VERBOSE);
-			return false;
-		}
-
-		fwrite($fp, $contents);
-		fclose($fp);
-		chmod($icon_file, 0644);
-		clearstatcache();
-
-		return $icon_file;
+		return false;
 	}
 
 	static function is_gzipped(string $feed_data): bool {
@@ -1868,17 +1905,33 @@ class RSSUtils {
 	}
 
 	/**
-	 * Try to determine the favicon URL for a feed.
-	 * adapted from wordpress favicon plugin by Jeff Minard (http://thecodepro.com/)
-	 * http://dev.wp-plugins.org/file/favatars/trunk/favatars.php
-	 *
+	 * Returns first determined favicon URL for a feed.
 	 * @param string $url A feed or page URL
 	 * @access public
 	 * @return false|string The favicon URL string, or false if none was found.
 	 */
 	static function get_favicon_url(string $url) {
 
-		$favicon_url = false;
+		$favicon_urls = self::get_favicon_urls($url);
+
+		if (count($favicon_urls) > 0)
+			return $favicon_urls[0];
+		else
+			return false;
+	}
+
+	/**
+	 * Try to determine all favicon URLs for a feed.
+	 * adapted from wordpress favicon plugin by Jeff Minard (http://thecodepro.com/)
+	 * http://dev.wp-plugins.org/file/favatars/trunk/favatars.php
+	 *
+	 * @param string $url A feed or page URL
+	 * @access public
+	 * @return array<string> List of all determined favicon URLs or an empty array
+	 */
+	static function get_favicon_urls(string $url) : array {
+
+		$favicon_urls = [];
 
 		if ($html = @UrlHelper::fetch($url)) {
 
@@ -1892,20 +1945,27 @@ class RSSUtils {
 					break;
 				}
 
-				$entries = $xpath->query('/html/head/link[@rel="shortcut icon" or @rel="icon"]');
+				$entries = $xpath->query('/html/head/link[@rel="shortcut icon" or @rel="icon" or @rel="alternate icon"]');
 				if (count($entries) > 0) {
 					foreach ($entries as $entry) {
 						$favicon_url = UrlHelper::rewrite_relative($url, $entry->getAttribute("href"));
-						break;
+
+						if ($favicon_url)
+							array_push($favicon_urls, $favicon_url);
+
 					}
 				}
 			}
 		}
 
-		if (!$favicon_url)
+		if (count($favicon_urls) == 0) {
 			$favicon_url = UrlHelper::rewrite_relative($url, "/favicon.ico");
 
-		return $favicon_url;
+			if ($favicon_url)
+							array_push($favicon_urls, $favicon_url);
+		}
+
+		return $favicon_urls;
 	}
 
 	/**

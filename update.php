@@ -99,8 +99,13 @@
 		"opml-export:" => ["USER:FILE", "export OPML of USER to FILE"],
 		"opml-import:" => ["USER:FILE", "import OPML for USER from FILE"],
 		"user-list" => "list all users",
-#		"user-add:" => ["USER[:PASSWORD]", "add USER, optionally without prompting for PASSWORD"],
-#		"user-remove:" => ["USERNAME", "remove specified user"],
+		"user-add:" => ["USER[:PASSWORD[:ACCESS_LEVEL=0]]", "add USER, prompts for password if unset"],
+		"user-remove:" => ["USERNAME", "remove USER"],
+		"user-check-password:" => ["USER:PASSWORD", "returns 0 if user has specified PASSWORD"],
+		"user-set-password:" => ["USER:PASSWORD", "sets PASSWORD of specified USER"],
+		"user-set-access-level:" => ["USER:LEVEL", "sets access LEVEL of specified USER"],
+		"user-exists:" => ["USER", "returns 0 if specified USER exists in the database"],
+		"force-yes" => "assume 'yes' to all queries",
 		"help" => "",
 	];
 
@@ -136,7 +141,7 @@
 			printf("  %s %s\n", str_pad($option, $max_key_len + 5), $help_text);
 		}
 
-		return;
+		exit(0);
 	}
 
 	if (!isset($options['daemon'])) {
@@ -150,7 +155,7 @@
 	Debug::set_enabled(true);
 
 	if (isset($options["log-level"])) {
-	    Debug::set_loglevel((int)$options["log-level"]);
+	    Debug::set_loglevel(Debug::map_loglevel((int)$options["log-level"]));
     }
 
 	if (isset($options["log"])) {
@@ -159,7 +164,7 @@
         Debug::log("Logging to " . $options["log"]);
     } else {
 	    if (isset($options['quiet'])) {
-			Debug::set_loglevel(Debug::$LOG_DISABLED);
+			Debug::set_loglevel(Debug::LOG_DISABLED);
         }
     }
 
@@ -177,7 +182,6 @@
 	if (isset($options["pidlock"])) {
 		$my_pid = $options["pidlock"];
 		$lock_filename = "update_daemon-$my_pid.lock";
-
 	}
 
 	Debug::log("Lock: $lock_filename");
@@ -247,6 +251,7 @@
 	if (isset($options["daemon-loop"])) {
 		if (!make_stampfile('update_daemon.stamp')) {
 			Debug::log("warning: unable to create stampfile\n");
+			exit(1);
 		}
 
 		RSSUtils::update_daemon_common(isset($options["pidlock"]) ? 50 : Config::get(Config::DAEMON_FEED_LIMIT), $options);
@@ -265,21 +270,23 @@
 	if (isset($options["update-schema"])) {
 		if (Config::is_migration_needed()) {
 
-			if ($options["update-schema"] != "force-yes") {
+			if (!isset($options['force-yes']) && $options["update-schema"] != "force-yes") {
 				Debug::log("Type 'yes' to continue.");
 
 				if (read_stdin() != 'yes')
-					exit;
+					exit(1);
 			} else {
 				Debug::log("Proceeding to update without confirmation.");
 			}
 
 			if (!isset($options["log-level"])) {
-				Debug::set_loglevel(Debug::$LOG_VERBOSE);
+				Debug::set_loglevel(Debug::LOG_VERBOSE);
 			}
 
 			$migrations = Config::get_migrations();
-			$migrations->migrate();
+			$rc = $migrations->migrate();
+
+			exit($rc ? 0 : 1);
 
 		} else {
 			Debug::log("Database schema is already at latest version.");
@@ -343,7 +350,6 @@
 		}
 
 		echo "Plugins marked by * are currently enabled for all users.\n";
-
 	}
 
 	if (isset($options["debug-feed"])) {
@@ -352,11 +358,11 @@
 		if (isset($options["force-refetch"])) $_REQUEST["force_refetch"] = true;
 		if (isset($options["force-rehash"])) $_REQUEST["force_rehash"] = true;
 
-		Debug::set_loglevel(Debug::$LOG_EXTENDED);
+		Debug::set_loglevel(Debug::LOG_EXTENDED);
 
-		$rc = RSSUtils::update_rss_feed($feed) != false ? 0 : 1;
+		$rc = RSSUtils::update_rss_feed($feed);
 
-		exit($rc);
+		exit($rc ? 0 : 1);
 	}
 
 	if (isset($options["send-digests"])) {
@@ -385,8 +391,10 @@
 			$rc = $opml->opml_export($filename, $owner_uid, false, true, true);
 
 			Debug::log($rc ? "Success." : "Failed.");
+			exit($rc ? 0 : 1);
 		} else {
 			Debug::log("User not found: $user");
+			exit(1);
 		}
 	}
 
@@ -401,10 +409,146 @@
 			$rc = $opml->opml_import($owner_uid, $filename);
 
 			Debug::log($rc ? "Success." : "Failed.");
+			exit($rc ? 0 : 1);
 		} else {
 			Debug::log("User not found: $user");
+			exit(1);
 		}
 
+	}
+
+	if (isset($options["user-add"])) {
+		list ($login, $password, $access_level) = explode(":", $options["user-add"], 3);
+
+		$uid = UserHelper::find_user_by_login($login);
+
+		if ($uid) {
+			Debug::log("Error: User already exists: $login");
+			exit(1);
+		}
+
+		if (!$access_level)
+			$access_level = UserHelper::ACCESS_LEVEL_USER;
+
+		if (!in_array($access_level, UserHelper::ACCESS_LEVELS)) {
+			Debug::log("Error: Invalid access level value: $access_level");
+			exit(1);
+		}
+
+		if (!$password) {
+			Debug::log("Please enter password for user $login: ");
+			$password = read_stdin();
+
+			if (!$password) {
+				Debug::log("Error: password may not be blank.");
+				exit(1);
+			}
+		}
+
+		Debug::log("Adding user $login with access level $access_level...");
+
+		if (UserHelper::user_add($login, $password, $access_level)) {
+			Debug::log("Success.");
+		} else {
+			Debug::log("Operation failed, check the logs for more information.");
+			exit(1);
+		}
+	}
+
+	if (isset($options["user-set-password"])) {
+		list ($login, $password) = explode(":", $options["user-set-password"], 2);
+
+		$uid = UserHelper::find_user_by_login($login);
+
+		if (!$uid) {
+			Debug::log("Error: User not found: $login");
+			exit(1);
+		}
+
+		Debug::log("Changing password of user $login...");
+
+		if (UserHelper::user_modify($uid, $password)) {
+			Debug::log("Success.");
+		} else {
+			Debug::log("Operation failed, check the logs for more information.");
+			exit(1);
+		}
+	}
+
+	if (isset($options["user-set-access-level"])) {
+		list ($login, $access_level) = explode(":", $options["user-set-access-level"], 2);
+
+		$uid = UserHelper::find_user_by_login($login);
+
+		if (!$uid) {
+			Debug::log("Error: User not found: $login");
+			exit(1);
+		}
+
+		if (!in_array($access_level, UserHelper::ACCESS_LEVELS)) {
+			Debug::log("Error: Invalid access level value: $access_level");
+			exit(1);
+		}
+
+		Debug::log("Changing access level of user $login...");
+
+		if (UserHelper::user_modify($uid, '', UserHelper::map_access_level((int)$access_level))) {
+			Debug::log("Success.");
+		} else {
+			Debug::log("Operation failed, check the logs for more information.");
+			exit(1);
+		}
+	}
+
+	if (isset($options["user-remove"])) {
+		$login = $options["user-remove"];
+
+		$uid = UserHelper::find_user_by_login($login);
+
+		if (!$uid) {
+			Debug::log("Error: User not found: $login");
+			exit(1);
+		}
+
+		if (!isset($options['force-yes'])) {
+			Debug::log("About to remove user $login. Type 'yes' to continue.");
+
+			if (read_stdin() != 'yes')
+				exit(1);
+		}
+
+		Debug::log("Removing user $login...");
+
+		if (UserHelper::user_delete($uid)) {
+			Debug::log("Success.");
+		} else {
+			Debug::log("Operation failed, check the logs for more information.");
+			exit(1);
+		}
+	}
+
+	if (isset($options["user-exists"])) {
+		$login = $options["user-exists"];
+
+		if (UserHelper::find_user_by_login($login))
+			exit(0);
+		else
+			exit(1);
+	}
+
+	if (isset($options["user-check-password"])) {
+		list ($login, $password) = explode(":", $options["user-check-password"], 2);
+
+		$uid = UserHelper::find_user_by_login($login);
+
+		if (!$uid) {
+			Debug::log("Error: User not found: $login");
+			exit(1);
+		}
+
+		$rc = UserHelper::user_has_password($uid, $password);
+
+		exit($rc ? 0 : 1);
 	}
 
 	PluginHost::getInstance()->run_commands($options);
