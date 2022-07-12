@@ -148,7 +148,7 @@ class toutiao extends Plugin{
 
 			$rss .= "</item>";
 			if(!$oldArticle) ++$newArticleCount;
-			if((!extension_loaded('xdebug'))&&$newArticleCount>=5) break;
+			if((!extension_loaded('xdebug'))&&$newArticleCount>=15) break;
 		}
 		$rss .= "</channel></rss>";
 		return $rss;
