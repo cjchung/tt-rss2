@@ -4,15 +4,22 @@
             "php": "7.4"
         }
     },
+	"repositories": [
+	    {
+			"name": "j4mie/idiorm",
+	      "type": "vcs",
+	      "url": "https://dev.tt-rss.org/fox/idiorm.git"
+	    }
+	  ],
     "require": {
         "spomky-labs/otphp": "^10.0",
-        "chillerlan/php-qrcode": "^3.3",
+        "chillerlan/php-qrcode": "^4.3.3",
         "mervick/material-design-icons": "^2.2",
         "kegi/netscape-cookie-file-handler": "^1.0",
-        "j4mie/idiorm": "^1.5"
+        "j4mie/idiorm": "dev-master"
     },
     "require-dev": {
-        "phpstan/phpstan": "^1.",
+        "phpstan/phpstan": "1.1.2",
         "phpunit/phpunit": "9.5.16"
     }
 }

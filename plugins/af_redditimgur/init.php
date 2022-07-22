@@ -402,7 +402,7 @@ class Af_RedditImgur extends Plugin {
 		$entries = $xpath->query('//a[@href]');
 
 		foreach ($entries as $entry) {
-			$entry_href = $entry->getAttribute("href");
+			$entry_href = UrlHelper::rewrite_relative($article["link"], $entry->getAttribute("href"), "a");
 
 			//hardcode skip refer link inserted by bot
 			if(strpos($entry_href, 'wolframalpha')) continue;
