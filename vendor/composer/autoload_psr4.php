@@ -10,6 +10,7 @@ return array(
     'chillerlan\\Settings\\' => array($vendorDir . '/chillerlan/php-settings-container/src'),
     'chillerlan\\QRCode\\' => array($vendorDir . '/chillerlan/php-qrcode/src'),
     'Webmozart\\Assert\\' => array($vendorDir . '/webmozart/assert/src'),
+    'Safe\\' => array($vendorDir . '/thecodingmachine/safe/lib', $vendorDir . '/thecodingmachine/safe/deprecated', $vendorDir . '/thecodingmachine/safe/generated'),
     'Prophecy\\' => array($vendorDir . '/phpspec/prophecy/src/Prophecy'),
     'PhpParser\\' => array($vendorDir . '/nikic/php-parser/lib/PhpParser'),
     'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
